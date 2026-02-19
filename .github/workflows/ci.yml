@@ -1,4 +1,4 @@
-name: CI
+name: Continuous Integration
 env:
   DEBUG: napi:*
   APP_NAME: ehrmantraut
@@ -17,7 +17,6 @@ env:
       - '**/*.gitignore'
       - .editorconfig
       - docs/**
-  pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -244,7 +243,6 @@ jobs:
       - lint
       - test-macOS-windows-binding
       - test-linux-binding
-    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
         with:
