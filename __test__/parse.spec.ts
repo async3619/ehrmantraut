@@ -1,17 +1,18 @@
 import test from 'ava'
 
+import type { CstNode } from '../index'
 import { parse } from '../index'
 
 test('parse JS variable declaration', (t) => {
   const cst = parse('let x = 1;', 'javascript')
   t.is(cst.kind, 'program')
-  t.true(cst.children.some((c: any) => c.kind === 'lexical_declaration'))
+  t.true(cst.children.some((c) => c.kind === 'lexical_declaration'))
 })
 
 test('parse TS variable declaration with type annotation', (t) => {
   const cst = parse('let x: number = 1;', 'typescript')
   t.is(cst.kind, 'program')
-  const decl = cst.children.find((c: any) => c.kind === 'lexical_declaration')
+  const decl = cst.children.find((c) => c.kind === 'lexical_declaration')
   t.truthy(decl)
 })
 
@@ -27,19 +28,18 @@ test('parse accepts language shorthand', (t) => {
 
 test('leaf nodes have text, branch nodes do not', (t) => {
   const cst = parse('let x = 1;', 'js')
-  // Root is a branch node
   t.is(cst.text, null)
-  // Find a leaf node (identifier "x")
-  const findLeaf = (node: any): any => {
+
+  const findLeaf = (node: CstNode): CstNode | null => {
     if (node.kind === 'identifier' && node.text) return node
-    for (const child of node.children || []) {
+    for (const child of node.children) {
       const found = findLeaf(child)
       if (found) return found
     }
     return null
   }
   const ident = findLeaf(cst)
-  t.truthy(ident)
+  if (!ident) return t.fail()
   t.is(ident.text, 'x')
 })
 
