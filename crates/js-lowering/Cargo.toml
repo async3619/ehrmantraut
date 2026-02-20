@@ -1,0 +1,7 @@
+[package]
+name = "ehrmantraut-js-lowering"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ehrmantraut-core = { path = "../core" }
