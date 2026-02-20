@@ -42,6 +42,9 @@ jobs:
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             build: yarn build --target x86_64-unknown-linux-gnu --use-napi-cross
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            build: yarn build --target x86_64-unknown-linux-musl -x
           - host: macos-latest
             target: aarch64-apple-darwin
             build: yarn build --target aarch64-apple-darwin
@@ -66,6 +69,17 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.settings.target }}
+      - uses: mlugg/setup-zig@v2
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        with:
+          version: 0.14.1
+      - name: Install cargo-zigbuild
+        uses: taiki-e/install-action@v2
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tool: cargo-zigbuild
       - name: Install dependencies
         run: yarn install
       - name: Build
@@ -74,11 +88,19 @@ jobs:
       - name: Test bindings
         if: ${{ !contains(matrix.settings.target, 'linux') }}
         run: yarn test
-      - name: Test bindings (Linux)
-        if: ${{ contains(matrix.settings.target, 'linux') }}
+      - name: Test bindings (Linux gnu)
+        if: ${{ contains(matrix.settings.target, 'linux') && !contains(matrix.settings.target, 'musl') }}
         uses: tj-actions/docker-run@v2
         with:
           image: node:22-slim
+          name: test-bindings-${{ matrix.settings.target }}
+          options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform linux/amd64'
+          args: yarn test
+      - name: Test bindings (Linux musl)
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        uses: tj-actions/docker-run@v2
+        with:
+          image: node:22-alpine
           name: test-bindings-${{ matrix.settings.target }}
           options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform linux/amd64'
           args: yarn test
