@@ -1,7 +1,9 @@
 use ehrmantraut_core::source::Span;
 use serde::Serialize;
+use ts_rs::TS;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct CstNode {
   pub kind: String,

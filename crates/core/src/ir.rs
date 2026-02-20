@@ -1,10 +1,12 @@
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::source::Span;
 
 // ── Module (top-level) ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct IrModule {
   pub span: Span,
@@ -13,7 +15,8 @@ pub struct IrModule {
 
 // ── Statements / Nodes ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum IrNode {
   // Declarations
@@ -43,7 +46,8 @@ pub enum IrNode {
 
 // ── Expressions ──────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum IrExpr {
   Assignment(Assignment),
@@ -58,7 +62,8 @@ pub enum IrExpr {
 
 // ── Declaration nodes ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct VariableDecl {
   pub span: Span,
@@ -67,7 +72,8 @@ pub struct VariableDecl {
   pub annotations: Annotations,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionDecl {
   pub span: Span,
@@ -77,14 +83,16 @@ pub struct FunctionDecl {
   pub annotations: Annotations,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Param {
   pub span: Span,
   pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct ClassDecl {
   pub span: Span,
@@ -96,7 +104,8 @@ pub struct ClassDecl {
 
 // ── Control flow nodes ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct IfStmt {
   pub span: Span,
@@ -105,7 +114,8 @@ pub struct IfStmt {
   pub alternate: Option<Box<IrNode>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct ForStmt {
   pub span: Span,
@@ -116,13 +126,15 @@ pub struct ForStmt {
   pub annotations: ForAnnotations,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct ForAnnotations {
   pub kind: ForKind,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub enum ForKind {
   #[default]
@@ -131,7 +143,8 @@ pub enum ForKind {
   Of,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct WhileStmt {
   pub span: Span,
@@ -140,7 +153,8 @@ pub struct WhileStmt {
   pub is_do_while: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct SwitchStmt {
   pub span: Span,
@@ -148,7 +162,8 @@ pub struct SwitchStmt {
   pub cases: Vec<SwitchCase>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct SwitchCase {
   pub span: Span,
@@ -156,7 +171,8 @@ pub struct SwitchCase {
   pub body: Vec<IrNode>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct TryCatchStmt {
   pub span: Span,
@@ -165,7 +181,8 @@ pub struct TryCatchStmt {
   pub finally_block: Option<Block>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct CatchClause {
   pub span: Span,
@@ -173,21 +190,24 @@ pub struct CatchClause {
   pub body: Block,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct ReturnStmt {
   pub span: Span,
   pub value: Option<IrExpr>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct BreakStmt {
   pub span: Span,
   pub label: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct ContinueStmt {
   pub span: Span,
@@ -196,14 +216,16 @@ pub struct ContinueStmt {
 
 // ── Expression nodes ─────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct ExpressionStatement {
   pub span: Span,
   pub expression: IrExpr,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Assignment {
   pub span: Span,
@@ -212,7 +234,8 @@ pub struct Assignment {
   pub value: Box<IrExpr>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Call {
   pub span: Span,
@@ -220,7 +243,8 @@ pub struct Call {
   pub arguments: Vec<IrExpr>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct MemberAccess {
   pub span: Span,
@@ -229,7 +253,8 @@ pub struct MemberAccess {
   pub computed: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct BinaryExpr {
   pub span: Span,
@@ -238,21 +263,24 @@ pub struct BinaryExpr {
   pub right: Box<IrExpr>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Identifier {
   pub span: Span,
   pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Literal {
   pub span: Span,
   pub value: LiteralValue,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub enum LiteralValue {
   String(String),
@@ -264,7 +292,8 @@ pub enum LiteralValue {
 
 // ── Scoping ──────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
   pub span: Span,
@@ -273,7 +302,8 @@ pub struct Block {
 
 // ── Annotations ──────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Annotations {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -294,7 +324,8 @@ fn is_false(v: &bool) -> bool {
   !v
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub enum ScopeLevel {
   Block,
@@ -302,7 +333,8 @@ pub enum ScopeLevel {
   Module,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub enum DeclKind {
   Let,
@@ -315,7 +347,8 @@ pub enum DeclKind {
 
 // ── Opaque (escape hatch) ────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct OpaqueExpr {
   pub span: Span,
@@ -323,7 +356,8 @@ pub struct OpaqueExpr {
   pub text: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct OpaqueNode {
   pub span: Span,

@@ -1,13 +1,16 @@
 use serde::Serialize;
+use ts_rs::TS;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Span {
   pub start: Position,
   pub end: Position,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Position {
   /// 0-based line number

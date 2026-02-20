@@ -14,7 +14,7 @@ fn parse_language(language: &str) -> napi::Result<Language> {
   }
 }
 
-#[napi]
+#[napi(ts_return_type = "CstNode")]
 pub fn parse(source: String, language: String) -> napi::Result<serde_json::Value> {
   let lang = parse_language(&language)?;
   let cst = ehrmantraut_js_lowering::parse(&source, lang)
@@ -23,7 +23,7 @@ pub fn parse(source: String, language: String) -> napi::Result<serde_json::Value
     .map_err(|e| napi::Error::from_reason(format!("serialization error: {e}")))
 }
 
-#[napi]
+#[napi(ts_return_type = "IrModule")]
 pub fn lower(source: String, language: String) -> napi::Result<serde_json::Value> {
   let lang = parse_language(&language)?;
   let cst = ehrmantraut_js_lowering::parse(&source, lang)
