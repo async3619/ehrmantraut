@@ -173,9 +173,7 @@ impl JsLowerer {
     let right = self.child_by_field(node, "right");
     let operator = self.child_by_field(node, "operator");
 
-    let op_str = operator
-      .map(|o| self.node_text(o))
-      .unwrap_or_default();
+    let op_str = operator.map(|o| self.node_text(o)).unwrap_or_default();
 
     let left_expr = match left {
       Some(l) => self.lower_expression(l)?,
