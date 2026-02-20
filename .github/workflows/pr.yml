@@ -81,7 +81,14 @@ jobs:
         with:
           tool: cargo-zigbuild
       - name: Install dependencies
+        if: ${{ !contains(matrix.settings.target, 'musl') }}
         run: yarn install
+      - name: Install dependencies (musl)
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        run: |
+          yarn config set --json supportedArchitectures.cpu '["current", "arm64", "x64", "arm"]'
+          yarn config set --json supportedArchitectures.libc '["current", "musl", "gnu"]'
+          yarn install
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
