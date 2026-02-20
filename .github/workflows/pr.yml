@@ -70,8 +70,10 @@ jobs:
         id: build-cache
         uses: actions/cache@v5
         with:
-          path: ${{ env.APP_NAME }}.*.node
-          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('src/**', 'build.rs', 'Cargo.toml', 'Cargo.lock') }}
+          path: |
+            ${{ env.APP_NAME }}.*.node
+            crates/napi/${{ env.APP_NAME }}.*.node
+          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('crates/**', 'Cargo.toml', 'Cargo.lock') }}
       - name: Cache cargo
         if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         uses: Swatinem/rust-cache@v2
