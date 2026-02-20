@@ -35,7 +35,14 @@ if (existsSync(napiDir)) {
     const napiContent = readFileSync(napiDts, 'utf-8')
     const funcLines = napiContent.split('\n').filter((l) => l.startsWith('export declare'))
 
-    const indexLines = ['/* eslint-disable */', "export * from './types'", '', ...funcLines, '']
+    const indexLines = [
+      '/* eslint-disable */',
+      "import type { CstNode, IrModule } from './types'",
+      "export * from './types'",
+      '',
+      ...funcLines,
+      '',
+    ]
     writeFileSync(resolve(root, 'index.d.ts'), indexLines.join('\n'))
   }
 }

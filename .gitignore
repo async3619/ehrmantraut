@@ -130,3 +130,4 @@ Cargo.lock
 /npm
 crates/napi/index.d.ts
 crates/napi/index.js
+crates/bindings/

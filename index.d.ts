@@ -1,4 +1,5 @@
 /* eslint-disable */
+import type { CstNode, IrModule } from './types'
 export * from './types'
 
 export declare function lower(source: string, language: string): IrModule
