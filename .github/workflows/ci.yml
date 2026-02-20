@@ -1,9 +1,9 @@
-name: CI
+name: Continuous Integration
 env:
   DEBUG: napi:*
   APP_NAME: ehrmantraut
   MACOSX_DEPLOYMENT_TARGET: '10.13'
-  CARGO_INCREMENTAL: '1'
+  CARGO_INCREMENTAL: '0'
 'on':
   push:
     branches:
@@ -17,7 +17,6 @@ env:
       - '**/*.gitignore'
       - .editorconfig
       - docs/**
-  pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -36,6 +35,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
       - name: Install dependencies
         run: yarn install
       - name: Oxlint
@@ -83,39 +84,42 @@ jobs:
           node-version: 24
           cache: yarn
       - name: Install
+        id: rust-toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           targets: ${{ matrix.settings.target }}
-      - name: Cache cargo
+      - name: Cache build artifact
+        id: build-cache
         uses: actions/cache@v5
         with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ~/.napi-rs
-            .cargo-cache
-            target/
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
+          path: ${{ env.APP_NAME }}.*.node
+          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('src/**', 'build.rs', 'Cargo.toml', 'Cargo.lock') }}
+      - name: Cache cargo
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.settings.target }}
       - uses: mlugg/setup-zig@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
         with:
           version: 0.14.1
       - name: Install cargo-zigbuild
         uses: taiki-e/install-action@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           tool: cargo-zigbuild
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
-        if: ${{ matrix.settings.setup }}
+        if: ${{ matrix.settings.setup && steps.build-cache.outputs.cache-hit != 'true' }}
         shell: bash
       - name: Install dependencies
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: yarn install
       - name: Build
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: ${{ matrix.settings.build }}
         shell: bash
       - name: Upload artifact
@@ -249,7 +253,6 @@ jobs:
       - lint
       - test-macOS-windows-binding
       - test-linux-binding
-    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
         with:

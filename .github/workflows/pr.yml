@@ -1,0 +1,122 @@
+name: Pull Request
+env:
+  DEBUG: napi:*
+  APP_NAME: ehrmantraut
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
+  CARGO_INCREMENTAL: '0'
+'on':
+  pull_request: null
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: yarn
+      - name: Install
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Install dependencies
+        run: yarn install
+      - name: Oxlint
+        run: yarn lint
+      - name: Cargo fmt
+        run: cargo fmt -- --check
+      - name: Clippy
+        run: cargo clippy
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: yarn build --target x86_64-unknown-linux-gnu --use-napi-cross
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            build: yarn build --target x86_64-unknown-linux-musl -x
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: yarn build --target aarch64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: yarn build --target x86_64-pc-windows-msvc
+    name: Build & Test - ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: yarn
+      - name: Install
+        id: rust-toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.settings.target }}
+      - name: Cache build artifact
+        id: build-cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.APP_NAME }}.*.node
+          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('src/**', 'build.rs', 'Cargo.toml', 'Cargo.lock') }}
+      - name: Cache cargo
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.settings.target }}
+      - uses: mlugg/setup-zig@v2
+        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
+        with:
+          version: 0.14.1
+      - name: Install cargo-zigbuild
+        uses: taiki-e/install-action@v2
+        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tool: cargo-zigbuild
+      - name: Install dependencies
+        if: ${{ !contains(matrix.settings.target, 'musl') }}
+        run: yarn install
+      - name: Install dependencies (musl)
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        run: |
+          yarn config set --json supportedArchitectures.cpu '["current", "arm64", "x64", "arm"]'
+          yarn config set --json supportedArchitectures.libc '["current", "musl", "gnu"]'
+          yarn install
+      - name: Build
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
+        run: ${{ matrix.settings.build }}
+        shell: bash
+      - name: Test bindings
+        if: ${{ !contains(matrix.settings.target, 'linux') }}
+        run: yarn test
+      - name: Test bindings (Linux gnu)
+        if: ${{ contains(matrix.settings.target, 'linux') && !contains(matrix.settings.target, 'musl') }}
+        uses: tj-actions/docker-run@v2
+        with:
+          image: node:22-slim
+          name: test-bindings-${{ matrix.settings.target }}
+          options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform linux/amd64'
+          args: yarn test
+      - name: Test bindings (Linux musl)
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        uses: tj-actions/docker-run@v2
+        with:
+          image: node:22-alpine
+          name: test-bindings-${{ matrix.settings.target }}
+          options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform linux/amd64'
+          args: yarn test
