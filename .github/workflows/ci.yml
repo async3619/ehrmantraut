@@ -84,32 +84,42 @@ jobs:
           node-version: 24
           cache: yarn
       - name: Install
+        id: rust-toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           targets: ${{ matrix.settings.target }}
+      - name: Cache build artifact
+        id: build-cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.APP_NAME }}.*.node
+          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('src/**', 'Cargo.toml', 'Cargo.lock') }}
       - name: Cache cargo
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.settings.target }}
       - uses: mlugg/setup-zig@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
         with:
           version: 0.14.1
       - name: Install cargo-zigbuild
         uses: taiki-e/install-action@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           tool: cargo-zigbuild
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
-        if: ${{ matrix.settings.setup }}
+        if: ${{ matrix.settings.setup && steps.build-cache.outputs.cache-hit != 'true' }}
         shell: bash
       - name: Install dependencies
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: yarn install
       - name: Build
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: ${{ matrix.settings.build }}
         shell: bash
       - name: Upload artifact
