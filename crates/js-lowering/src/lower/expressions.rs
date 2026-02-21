@@ -2,8 +2,8 @@ use ehrmantraut_core::ir::{
   AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, AwaitExpr, BinaryExpr, Block,
   Call, ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
   LiteralValue, MemberAccess, MethodProperty, NewExpr, ObjectExpr, ObjectProperty, OpaqueExpr,
-  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, UnaryExpr, UpdateExpr,
-  YieldExpr,
+  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, TemplateLiteral, UnaryExpr,
+  UpdateExpr, YieldExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -435,6 +435,51 @@ impl JsLowerer {
         ..Default::default()
       },
       is_arrow: true,
+    }))
+  }
+
+  // ── Template literal ──────────────────────────────────────────
+
+  pub fn lower_template_string(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let has_interpolation = node
+      .children
+      .iter()
+      .any(|c| c.kind == "template_substitution");
+
+    if !has_interpolation {
+      // Simple template string without interpolation — lower as string literal
+      return Ok(self.lower_string_literal(node));
+    }
+
+    let mut quasis = Vec::new();
+    let mut expressions = Vec::new();
+    let mut current_quasi = String::new();
+
+    for child in &node.children {
+      match child.kind.as_str() {
+        "string_fragment" | "escape_sequence" => {
+          current_quasi.push_str(&self.node_text(child));
+        }
+        "template_substitution" => {
+          quasis.push(std::mem::take(&mut current_quasi));
+          if let Some(expr_node) = self.first_named_child(child) {
+            let expr = self.lower_expression(expr_node)?;
+            expressions.push(expr);
+          }
+        }
+        _ => {}
+      }
+    }
+    // Push the trailing quasi
+    quasis.push(current_quasi);
+
+    Ok(IrExpr::TemplateLiteral(TemplateLiteral {
+      span: node.span,
+      quasis,
+      expressions,
     }))
   }
 

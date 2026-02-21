@@ -187,18 +187,7 @@ impl JsLowerer {
       "this" | "super" => Ok(self.lower_identifier(node)),
       "number" => Ok(self.lower_number_literal(node)),
       "string" => Ok(self.lower_string_literal(node)),
-      "template_string" => {
-        let text = self.node_text(node);
-        if text.contains("${") {
-          Ok(IrExpr::Opaque(OpaqueExpr {
-            span: node.span,
-            cst_kind: node.kind.clone(),
-            text,
-          }))
-        } else {
-          Ok(self.lower_string_literal(node))
-        }
-      }
+      "template_string" => self.lower_template_string(node),
       "true" | "false" => Ok(self.lower_boolean_literal(node)),
       "null" => Ok(self.lower_null_literal(node)),
       "undefined" => Ok(self.lower_undefined(node)),
