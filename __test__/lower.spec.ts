@@ -930,3 +930,71 @@ test('lower JS class async method', (t) => {
   t.is(member.isAsync, true)
   t.is(member.isGenerator, false)
 })
+
+// ── advanced function parameter patterns ─────────────────────────────
+
+test('lower JS function default parameter', (t) => {
+  const node = lower('function fn(x = 10) {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.params.length, 1)
+  t.is(node.params[0].name, 'x')
+  t.truthy(node.params[0].defaultValue)
+})
+
+test('lower JS function rest parameter', (t) => {
+  const node = lower('function fn(...args) {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.params.length, 1)
+  t.is(node.params[0].name, '...args')
+})
+
+test('lower JS function destructured object param', (t) => {
+  const node = lower('function fn({ x, y }) {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.params[0].name, '')
+  t.truthy(node.params[0].pattern)
+  if (node.params[0].pattern?.kind !== 'object') return t.fail()
+  t.is(node.params[0].pattern.properties.length, 2)
+})
+
+test('lower JS function destructured array param', (t) => {
+  const node = lower('function fn([a, b]) {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.params[0].name, '')
+  t.truthy(node.params[0].pattern)
+  if (node.params[0].pattern?.kind !== 'array') return t.fail()
+  t.is(node.params[0].pattern.elements.length, 2)
+})
+
+test('lower JS function destructured param with default', (t) => {
+  const node = lower('function fn({ x = 1 } = {}) {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.params[0].name, '')
+  t.truthy(node.params[0].pattern)
+  t.truthy(node.params[0].defaultValue)
+})
+
+test('lower JS arrow function default param', (t) => {
+  const node = lower('const fn = (x = 10) => x;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.params.length, 1)
+  t.is(node.value.params[0].name, 'x')
+  t.truthy(node.value.params[0].defaultValue)
+})
+
+test('lower JS arrow function destructured param', (t) => {
+  const node = lower('const fn = ({ x, y }) => x;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.params[0].name, '')
+  t.truthy(node.value.params[0].pattern)
+})
+
+test('lower JS function expression with default param', (t) => {
+  const node = lower('const fn = function(x = 5) {};', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.params[0].name, 'x')
+  t.truthy(node.value.params[0].defaultValue)
+})

@@ -494,7 +494,11 @@ impl JsLowerer {
       }
       // TypeScript accessibility modifiers may appear as named nodes
       if child.kind == "accessibility_modifier" {
-        let text = if let Some(t) = &child.text { t.as_str() } else { "" };
+        let text = if let Some(t) = &child.text {
+          t.as_str()
+        } else {
+          ""
+        };
         return match text {
           "public" => Some(Accessibility::Public),
           "private" => Some(Accessibility::Private),
@@ -506,7 +510,7 @@ impl JsLowerer {
     None
   }
 
-  fn lower_formal_parameters(&mut self, func_node: &crate::cst::CstNode) -> Vec<Param> {
+  pub(crate) fn lower_formal_parameters(&mut self, func_node: &crate::cst::CstNode) -> Vec<Param> {
     let params_node = self.child_by_field(func_node, "parameters");
     match params_node {
       Some(p) => p
@@ -519,7 +523,7 @@ impl JsLowerer {
     }
   }
 
-  fn lower_param(&mut self, node: &crate::cst::CstNode) -> Result<Param, LowerError> {
+  pub(crate) fn lower_param(&mut self, node: &crate::cst::CstNode) -> Result<Param, LowerError> {
     match node.kind.as_str() {
       "object_pattern" | "array_pattern" => {
         let pat = self.lower_pattern(node)?;
