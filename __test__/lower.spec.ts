@@ -247,6 +247,60 @@ test('lower JS class declaration with extends', (t) => {
   t.truthy(node.superClass)
 })
 
+// ── arrow function expression ──────────────────────────────────────
+
+test('lower JS arrow function concise body', (t) => {
+  const node = lower('const fn = (x) => x + 1;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, true)
+  t.is(node.value.params.length, 1)
+  t.is(node.value.params[0].name, 'x')
+  // Concise body should be wrapped in implicit return
+  t.is(node.value.body.body.length, 1)
+  t.is(node.value.body.body[0].type, 'return')
+})
+
+test('lower JS arrow function block body', (t) => {
+  const node = lower('const fn = () => { return 1 };', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, true)
+  t.is(node.value.body.body.length, 1)
+  t.is(node.value.body.body[0].type, 'return')
+})
+
+test('lower JS async arrow function', (t) => {
+  const node = lower('const fn = async (x) => x;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, true)
+  t.is(node.value.annotations.isAsync, true)
+})
+
+test('lower JS arrow function single param no parens', (t) => {
+  const node = lower('const fn = x => x;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.params.length, 1)
+  t.is(node.value.params[0].name, 'x')
+})
+
+test('lower JS function expression', (t) => {
+  const node = lower('const fn = function foo(a) { return a };', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, false)
+  t.is(node.value.name, 'foo')
+  t.is(node.value.params.length, 1)
+})
+
+test('lower JS function declaration has isArrow false', (t) => {
+  const node = lower('function foo() {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.isArrow, false)
+})
+
 // ── throw statement ────────────────────────────────────────────────
 
 test('lower JS throw statement', (t) => {

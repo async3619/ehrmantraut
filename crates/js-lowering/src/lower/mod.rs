@@ -178,6 +178,9 @@ impl JsLowerer {
       "unary_expression" => self.lower_unary_expression(node),
       "update_expression" => self.lower_update_expression(node),
       "ternary_expression" => self.lower_conditional_expression(node),
+      "arrow_function" => self.lower_arrow_function(node),
+      "function_expression" => self.lower_function_expression(node),
+      "generator_function" => self.lower_function_expression(node),
       "array" => self.lower_array_expression(node),
       "object" => self.lower_object_expression(node),
       "parenthesized_expression" => {

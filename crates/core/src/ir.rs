@@ -62,6 +62,7 @@ pub enum IrExpr {
   ConditionalExpr(ConditionalExpr),
   ArrayExpr(ArrayExpr),
   ObjectExpr(ObjectExpr),
+  FunctionExpr(FunctionDecl),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
 }
@@ -87,6 +88,7 @@ pub struct FunctionDecl {
   pub params: Vec<Param>,
   pub body: Block,
   pub annotations: Annotations,
+  pub is_arrow: bool,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]

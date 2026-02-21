@@ -96,6 +96,7 @@ impl JsLowerer {
         is_generator,
         ..Default::default()
       },
+      is_arrow: false,
     }))
   }
 
