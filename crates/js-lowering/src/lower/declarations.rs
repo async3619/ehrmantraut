@@ -8,8 +8,7 @@ impl JsLowerer {
   pub fn lower_variable_declaration(
     &mut self,
     node: &crate::cst::CstNode,
-  ) -> Result<IrNode, LowerError> {
-    // Determine the declaration kind (let/const/var) from the first unnamed child
+  ) -> Result<Vec<IrNode>, LowerError> {
     let kind_text = node
       .children
       .iter()
@@ -19,18 +18,14 @@ impl JsLowerer {
 
     let (decl_kind, scope_level) = Self::decl_kind_and_scope(kind_text);
 
-    // Find all variable_declarator children
     let declarators: Vec<_> = node
       .children
       .iter()
       .filter(|c| c.kind == "variable_declarator")
       .collect();
 
-    // For simplicity, lower the first declarator.
-    // Multi-declarator statements (let a = 1, b = 2) produce a single
-    // VariableDecl for the first declarator — this is intentional for the
-    // initial implementation and can be expanded later.
-    if let Some(declarator) = declarators.first() {
+    let mut nodes = Vec::new();
+    for declarator in &declarators {
       let name = self
         .child_by_field(declarator, "name")
         .map(|n| self.node_text(n))
@@ -41,18 +36,20 @@ impl JsLowerer {
         .map(|v| self.lower_expression(v))
         .transpose()?;
 
-      Ok(IrNode::VariableDecl(VariableDecl {
-        span: node.span,
+      nodes.push(IrNode::VariableDecl(VariableDecl {
+        span: declarator.span,
         name,
         value,
         annotations: Annotations {
-          scope_level,
-          declaration_kind: decl_kind,
+          scope_level: scope_level.clone(),
+          declaration_kind: decl_kind.clone(),
           ..Default::default()
         },
-      }))
-    } else {
-      Ok(IrNode::VariableDecl(VariableDecl {
+      }));
+    }
+
+    if nodes.is_empty() {
+      nodes.push(IrNode::VariableDecl(VariableDecl {
         span: node.span,
         name: String::new(),
         value: None,
@@ -61,8 +58,10 @@ impl JsLowerer {
           declaration_kind: decl_kind,
           ..Default::default()
         },
-      }))
+      }));
     }
+
+    Ok(nodes)
   }
 
   pub fn lower_function_declaration(
@@ -82,12 +81,8 @@ impl JsLowerer {
       },
     };
 
-    // Check for async/generator from unnamed children
     let is_async = node.children.iter().any(|c| c.kind == "async");
-    let is_generator = node
-      .children
-      .iter()
-      .any(|c| c.kind == "*" || c.kind == "generator_function_declaration");
+    let is_generator = node.children.iter().any(|c| c.kind == "*");
 
     Ok(IrNode::FunctionDecl(FunctionDecl {
       span: node.span,
@@ -115,7 +110,6 @@ impl JsLowerer {
       .iter()
       .find(|c| c.field_name.as_deref() == Some("superclass"))
       .or_else(|| {
-        // tree-sitter uses "class_heritage" for extends
         node
           .children
           .iter()
@@ -125,7 +119,6 @@ impl JsLowerer {
 
     let super_class_expr = super_class.map(|s| self.lower_expression(s)).transpose()?;
 
-    // Lower class body
     let body_node = self.child_by_field(node, "body");
     let body = match body_node {
       Some(b) => self.lower_children(b)?,

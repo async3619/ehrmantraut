@@ -29,8 +29,8 @@ impl fmt::Display for LowerError {
 
 impl std::error::Error for LowerError {}
 
-pub fn lower(cst: &CstNode, language: Language) -> Result<IrModule, LowerError> {
-  let mut lowerer = JsLowerer::new(language);
+pub fn lower(cst: &CstNode, language: Language, source: &str) -> Result<IrModule, LowerError> {
+  let mut lowerer = JsLowerer::new(language, source);
   lowerer.lower_program(cst)
 }
 
@@ -40,10 +40,10 @@ pub(crate) struct JsLowerer {
 }
 
 impl JsLowerer {
-  pub fn new(language: Language) -> Self {
+  pub fn new(language: Language, source: &str) -> Self {
     Self {
       language,
-      source: String::new(),
+      source: source.to_string(),
     }
   }
 
@@ -58,6 +58,11 @@ impl JsLowerer {
   pub fn lower_children(&mut self, parent: &CstNode) -> Result<Vec<IrNode>, LowerError> {
     let mut nodes = Vec::new();
     for child in &parent.children {
+      // Variable declarations can produce multiple nodes (multi-declarator)
+      if child.kind == "lexical_declaration" || child.kind == "variable_declaration" {
+        nodes.extend(self.lower_variable_declaration(child)?);
+        continue;
+      }
       if let Some(node) = self.lower_node(child)? {
         nodes.push(node);
       }
@@ -77,9 +82,9 @@ impl JsLowerer {
     }
 
     match node.kind.as_str() {
-      // Declarations
+      // Declarations (multi-declarator handled in lower_children)
       "lexical_declaration" | "variable_declaration" => {
-        Ok(Some(self.lower_variable_declaration(node)?))
+        Ok(self.lower_variable_declaration(node)?.into_iter().next())
       }
       "function_declaration" => Ok(Some(self.lower_function_declaration(node)?)),
       "class_declaration" => Ok(Some(self.lower_class_declaration(node)?)),
@@ -153,7 +158,19 @@ impl JsLowerer {
       "identifier" | "shorthand_property_identifier" => Ok(self.lower_identifier(node)),
       "property_identifier" => Ok(self.lower_identifier(node)),
       "number" => Ok(self.lower_number_literal(node)),
-      "string" | "template_string" => Ok(self.lower_string_literal(node)),
+      "string" => Ok(self.lower_string_literal(node)),
+      "template_string" => {
+        let text = self.node_text(node);
+        if text.contains("${") {
+          Ok(IrExpr::Opaque(OpaqueExpr {
+            span: node.span,
+            cst_kind: node.kind.clone(),
+            text,
+          }))
+        } else {
+          Ok(self.lower_string_literal(node))
+        }
+      }
       "true" | "false" => Ok(self.lower_boolean_literal(node)),
       "null" => Ok(self.lower_null_literal(node)),
       "undefined" => Ok(self.lower_undefined(node)),

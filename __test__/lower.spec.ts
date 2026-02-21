@@ -92,3 +92,20 @@ test('lower multiple statements', (t) => {
   t.is(first.name, 'x')
   t.is(second.name, 'y')
 })
+
+test('lower JS multi-declarator splits into separate nodes', (t) => {
+  const ir = lower('let a = 1, b = 2, c = 3;', 'javascript')
+  t.is(ir.body.length, 3)
+
+  for (const node of ir.body) {
+    if (node.type !== 'variableDecl') return t.fail()
+    t.is(node.annotations.declarationKind, 'let')
+    t.is(node.annotations.scopeLevel, 'block')
+  }
+
+  const [a, b, c] = ir.body
+  if (a.type !== 'variableDecl' || b.type !== 'variableDecl' || c.type !== 'variableDecl') return t.fail()
+  t.is(a.name, 'a')
+  t.is(b.name, 'b')
+  t.is(c.name, 'c')
+})

@@ -28,7 +28,7 @@ pub fn lower(source: String, language: String) -> napi::Result<serde_json::Value
   let lang = parse_language(&language)?;
   let cst = ehrmantraut_js_lowering::parse(&source, lang)
     .map_err(|e| napi::Error::from_reason(format!("{e}")))?;
-  let ir = ehrmantraut_js_lowering::lower(&cst, lang)
+  let ir = ehrmantraut_js_lowering::lower(&cst, lang, &source)
     .map_err(|e| napi::Error::from_reason(format!("{e}")))?;
   serde_json::to_value(&ir)
     .map_err(|e| napi::Error::from_reason(format!("serialization error: {e}")))
