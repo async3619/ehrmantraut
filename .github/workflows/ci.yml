@@ -259,7 +259,7 @@ jobs:
       - test-macOS-windows-binding
       - test-linux-binding
     if: github.event_name == 'push'
-    steps:
+ㅓ    steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -294,9 +294,12 @@ jobs:
       - name: Publish
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |
+          TAG="${{ steps.semantic.outputs.new_release_channel }}"
+          NPM_TAG="${TAG:-latest}"
           npm config set provenance true
+          npm config set tag "$NPM_TAG"
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          npm publish --access public
+          npm publish --access public --tag "$NPM_TAG"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
