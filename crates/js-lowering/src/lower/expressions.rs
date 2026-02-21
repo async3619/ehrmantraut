@@ -1,8 +1,9 @@
 use ehrmantraut_core::ir::{
-  AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, BinaryExpr, Block, Call,
-  ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
+  AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, AwaitExpr, BinaryExpr, Block,
+  Call, ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
   LiteralValue, MemberAccess, MethodProperty, NewExpr, ObjectExpr, ObjectProperty, OpaqueExpr,
   Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, UnaryExpr, UpdateExpr,
+  YieldExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -434,6 +435,47 @@ impl JsLowerer {
         ..Default::default()
       },
       is_arrow: true,
+    }))
+  }
+
+  // ── Await / Yield ─────────────────────────────────────────────
+
+  pub fn lower_await_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let argument = self
+      .first_named_child(node)
+      .map(|a| self.lower_expression(a))
+      .transpose()?
+      .unwrap_or(IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_await_argument".to_string(),
+        text: String::new(),
+      }));
+
+    Ok(IrExpr::AwaitExpr(AwaitExpr {
+      span: node.span,
+      argument: Box::new(argument),
+    }))
+  }
+
+  pub fn lower_yield_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let delegate = node.children.iter().any(|c| !c.named && c.kind == "*");
+
+    let argument = self
+      .first_named_child(node)
+      .map(|a| self.lower_expression(a))
+      .transpose()?
+      .map(Box::new);
+
+    Ok(IrExpr::YieldExpr(YieldExpr {
+      span: node.span,
+      argument,
+      delegate,
     }))
   }
 

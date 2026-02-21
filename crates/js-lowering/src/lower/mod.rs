@@ -108,7 +108,9 @@ impl JsLowerer {
       "lexical_declaration" | "variable_declaration" => {
         Ok(self.lower_variable_declaration(node)?.into_iter().next())
       }
-      "function_declaration" => Ok(Some(self.lower_function_declaration(node)?)),
+      "function_declaration" | "generator_function_declaration" => {
+        Ok(Some(self.lower_function_declaration(node)?))
+      }
       "class_declaration" => Ok(Some(self.lower_class_declaration(node)?)),
       "import_statement" => Ok(Some(self.lower_import_declaration(node)?)),
       "export_statement" => Ok(Some(self.lower_export_declaration(node)?)),
@@ -207,6 +209,8 @@ impl JsLowerer {
       "function_expression" => self.lower_function_expression(node),
       "generator_function" => self.lower_function_expression(node),
       "new_expression" => self.lower_new_expression(node),
+      "await_expression" => self.lower_await_expression(node),
+      "yield_expression" => self.lower_yield_expression(node),
       "spread_element" => self.lower_spread_expression(node),
       "array" => self.lower_array_expression(node),
       "object" => self.lower_object_expression(node),

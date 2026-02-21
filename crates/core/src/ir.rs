@@ -68,6 +68,8 @@ pub enum IrExpr {
   ObjectExpr(ObjectExpr),
   FunctionExpr(FunctionDecl),
   NewExpr(NewExpr),
+  AwaitExpr(AwaitExpr),
+  YieldExpr(YieldExpr),
   SpreadExpr(SpreadExpr),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
@@ -624,6 +626,25 @@ pub struct AssignmentPattern {
 pub struct RestPattern {
   pub span: Span,
   pub argument: Box<Pattern>,
+}
+
+// ── Await / Yield ───────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct AwaitExpr {
+  pub span: Span,
+  pub argument: Box<IrExpr>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct YieldExpr {
+  pub span: Span,
+  pub argument: Option<Box<IrExpr>>,
+  pub delegate: bool,
 }
 
 // ── New expression ──────────────────────────────────────────────────

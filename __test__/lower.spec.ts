@@ -749,3 +749,46 @@ test('lower JS super expression', (t) => {
   const body = node.body
   t.truthy(body.length > 0)
 })
+
+// ── await / yield ─────────────────────────────────────────────────
+
+test('lower JS await expression', (t) => {
+  const ir = lower('async function f() { const r = await fetch("/api"); }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const decl = fn.body.body[0]
+  if (decl.type !== 'variableDecl') return t.fail()
+  if (decl.value?.type !== 'awaitExpr') return t.fail()
+  t.is(decl.value.argument.type, 'call')
+})
+
+test('lower JS yield expression', (t) => {
+  const ir = lower('function* gen() { yield 1; }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const stmt = fn.body.body[0]
+  if (stmt.type !== 'expressionStatement') return t.fail()
+  if (stmt.expression.type !== 'yieldExpr') return t.fail()
+  t.is(stmt.expression.delegate, false)
+  t.truthy(stmt.expression.argument)
+})
+
+test('lower JS yield delegate expression', (t) => {
+  const ir = lower('function* gen() { yield* other(); }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const stmt = fn.body.body[0]
+  if (stmt.type !== 'expressionStatement') return t.fail()
+  if (stmt.expression.type !== 'yieldExpr') return t.fail()
+  t.is(stmt.expression.delegate, true)
+})
+
+test('lower JS yield without value', (t) => {
+  const ir = lower('function* gen() { yield; }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const stmt = fn.body.body[0]
+  if (stmt.type !== 'expressionStatement') return t.fail()
+  if (stmt.expression.type !== 'yieldExpr') return t.fail()
+  t.is(stmt.expression.argument, null)
+})
