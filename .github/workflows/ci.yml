@@ -242,14 +242,24 @@ jobs:
           platforms: all
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         if: ${{ contains(matrix.target, 'armv7') }}
-      - name: Check missing libraries in Docker
+      - name: Debug binding load error
         if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
         run: |
-          docker run --rm --platform linux/arm64 \
-            -v ${{ github.workspace }}:${{ github.workspace }} \
-            -w ${{ github.workspace }} \
-            node:${{ matrix.node }}-slim \
-            sh -c "ldd ehrmantraut.linux-arm64-gnu.node 2>&1 || true"
+          file ehrmantraut.linux-arm64-gnu.node
+          node -e "
+            const { createRequire } = require('node:module');
+            const req = createRequire(require('path').resolve('index.js'));
+            try {
+              req('./ehrmantraut.linux-arm64-gnu.node');
+              console.log('OK: binary loaded');
+            } catch (e) {
+              let err = e;
+              while (err) {
+                process.stderr.write('[ERR] ' + err.message + '\n');
+                err = err.cause;
+              }
+            }
+          " 2>&1 || true
         shell: bash
         continue-on-error: true
       - name: Test bindings (native)
