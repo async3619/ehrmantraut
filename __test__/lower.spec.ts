@@ -858,3 +858,75 @@ test('lower JS labeled break extracts label', (t) => {
   if (stmt.type !== 'break') return t.fail()
   t.is(stmt.label, 'outer')
 })
+
+// ── class body members ──────────────────────────────────────────────
+
+test('lower JS class method', (t) => {
+  const node = lower('class Foo { method() { return 1 } }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  t.is(node.body.length, 1)
+  const member = node.body[0]
+  if (member.type !== 'methodDefinition') return t.fail()
+  t.is(member.kind, 'method')
+  t.is(member.isStatic, false)
+  if (member.key.type !== 'identifier') return t.fail()
+  t.is(member.key.name, 'method')
+})
+
+test('lower JS class constructor', (t) => {
+  const node = lower('class Foo { constructor(x) { this.x = x } }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  const member = node.body[0]
+  if (member.type !== 'methodDefinition') return t.fail()
+  t.is(member.kind, 'constructor')
+  t.is(member.params.length, 1)
+})
+
+test('lower JS class getter and setter', (t) => {
+  const node = lower('class Foo { get x() { return 1 } set x(v) { } }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  t.is(node.body.length, 2)
+  const getter = node.body[0]
+  const setter = node.body[1]
+  if (getter.type !== 'methodDefinition') return t.fail()
+  t.is(getter.kind, 'get')
+  if (setter.type !== 'methodDefinition') return t.fail()
+  t.is(setter.kind, 'set')
+})
+
+test('lower JS class static method', (t) => {
+  const node = lower('class Foo { static bar() {} }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  const member = node.body[0]
+  if (member.type !== 'methodDefinition') return t.fail()
+  t.is(member.isStatic, true)
+  t.is(member.kind, 'method')
+})
+
+test('lower JS class property', (t) => {
+  const node = lower('class Foo { x = 1 }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  const member = node.body[0]
+  if (member.type !== 'propertyDefinition') return t.fail()
+  if (member.key.type !== 'identifier') return t.fail()
+  t.is(member.key.name, 'x')
+  t.truthy(member.value)
+  t.is(member.isStatic, false)
+})
+
+test('lower JS class static property', (t) => {
+  const node = lower('class Foo { static y = 2 }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  const member = node.body[0]
+  if (member.type !== 'propertyDefinition') return t.fail()
+  t.is(member.isStatic, true)
+})
+
+test('lower JS class async method', (t) => {
+  const node = lower('class Foo { async fetch() {} }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  const member = node.body[0]
+  if (member.type !== 'methodDefinition') return t.fail()
+  t.is(member.isAsync, true)
+  t.is(member.isGenerator, false)
+})

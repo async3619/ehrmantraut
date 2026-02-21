@@ -131,6 +131,12 @@ impl JsLowerer {
       // Labeled statement
       "labeled_statement" => Ok(Some(self.lower_labeled_statement(node)?)),
 
+      // Class members
+      "method_definition" => Ok(Some(self.lower_method_definition(node)?)),
+      "field_definition" | "public_field_definition" => {
+        Ok(Some(self.lower_property_definition(node)?))
+      }
+
       // Expressions as statements
       "expression_statement" => {
         let expr_child = self.first_named_child(node);
