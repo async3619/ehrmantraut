@@ -247,6 +247,161 @@ test('lower JS class declaration with extends', (t) => {
   t.truthy(node.superClass)
 })
 
+// ── import declarations ────────────────────────────────────────────
+
+test('lower JS default import', (t) => {
+  const node = lower("import x from 'mod';", 'javascript').body[0]
+  if (node.type !== 'importDecl') return t.fail()
+  t.is(node.source, 'mod')
+  t.is(node.specifiers.length, 1)
+  t.is(node.specifiers[0].kind, 'default')
+  if (node.specifiers[0].kind !== 'default') return t.fail()
+  t.is(node.specifiers[0].local, 'x')
+})
+
+test('lower JS named imports', (t) => {
+  const node = lower("import { foo, bar as b } from 'mod';", 'javascript').body[0]
+  if (node.type !== 'importDecl') return t.fail()
+  t.is(node.specifiers.length, 2)
+  if (node.specifiers[0].kind !== 'named') return t.fail()
+  t.is(node.specifiers[0].imported, 'foo')
+  t.is(node.specifiers[0].local, 'foo')
+  if (node.specifiers[1].kind !== 'named') return t.fail()
+  t.is(node.specifiers[1].imported, 'bar')
+  t.is(node.specifiers[1].local, 'b')
+})
+
+test('lower JS namespace import', (t) => {
+  const node = lower("import * as ns from 'mod';", 'javascript').body[0]
+  if (node.type !== 'importDecl') return t.fail()
+  t.is(node.specifiers.length, 1)
+  if (node.specifiers[0].kind !== 'namespace') return t.fail()
+  t.is(node.specifiers[0].local, 'ns')
+})
+
+test('lower JS side-effect import', (t) => {
+  const node = lower("import 'mod';", 'javascript').body[0]
+  if (node.type !== 'importDecl') return t.fail()
+  t.is(node.specifiers.length, 0)
+  t.is(node.source, 'mod')
+})
+
+// ── export declarations ────────────────────────────────────────────
+
+test('lower JS export function declaration', (t) => {
+  const node = lower('export function foo() {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.annotations.isExport, true)
+  t.is(node.name, 'foo')
+})
+
+test('lower JS export const', (t) => {
+  const node = lower('export const x = 1;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  t.is(node.annotations.isExport, true)
+  t.is(node.name, 'x')
+})
+
+test('lower JS named exports', (t) => {
+  const node = lower('export { x, y as z };', 'javascript').body[0]
+  if (node.type !== 'exportDecl') return t.fail()
+  t.is(node.specifiers.length, 2)
+  t.is(node.specifiers[0].local, 'x')
+  t.is(node.specifiers[0].exported, 'x')
+  t.is(node.specifiers[1].local, 'y')
+  t.is(node.specifiers[1].exported, 'z')
+})
+
+test('lower JS export default expression', (t) => {
+  const node = lower('export default 42;', 'javascript').body[0]
+  if (node.type !== 'exportDecl') return t.fail()
+  t.is(node.isDefault, true)
+  t.truthy(node.declaration)
+})
+
+test('lower JS re-export', (t) => {
+  const node = lower("export { x } from 'mod';", 'javascript').body[0]
+  if (node.type !== 'exportDecl') return t.fail()
+  t.is(node.source, 'mod')
+  t.is(node.specifiers.length, 1)
+})
+
+test('lower JS namespace re-export', (t) => {
+  const node = lower("export * from 'mod';", 'javascript').body[0]
+  if (node.type !== 'exportDecl') return t.fail()
+  t.is(node.source, 'mod')
+  t.is(node.specifiers[0].local, '*')
+})
+
+// ── arrow function expression ──────────────────────────────────────
+
+test('lower JS arrow function concise body', (t) => {
+  const node = lower('const fn = (x) => x + 1;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, true)
+  t.is(node.value.params.length, 1)
+  t.is(node.value.params[0].name, 'x')
+  // Concise body should be wrapped in implicit return
+  t.is(node.value.body.body.length, 1)
+  t.is(node.value.body.body[0].type, 'return')
+})
+
+test('lower JS arrow function block body', (t) => {
+  const node = lower('const fn = () => { return 1 };', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, true)
+  t.is(node.value.body.body.length, 1)
+  t.is(node.value.body.body[0].type, 'return')
+})
+
+test('lower JS async arrow function', (t) => {
+  const node = lower('const fn = async (x) => x;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, true)
+  t.is(node.value.annotations.isAsync, true)
+})
+
+test('lower JS arrow function single param no parens', (t) => {
+  const node = lower('const fn = x => x;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.params.length, 1)
+  t.is(node.value.params[0].name, 'x')
+})
+
+test('lower JS function expression', (t) => {
+  const node = lower('const fn = function foo(a) { return a };', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.value?.type !== 'functionExpr') return t.fail()
+  t.is(node.value.isArrow, false)
+  t.is(node.value.name, 'foo')
+  t.is(node.value.params.length, 1)
+})
+
+test('lower JS function declaration has isArrow false', (t) => {
+  const node = lower('function foo() {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.isArrow, false)
+})
+
+// ── throw statement ────────────────────────────────────────────────
+
+test('lower JS throw statement', (t) => {
+  const node = lower('throw new Error("msg");', 'javascript').body[0]
+  if (node.type !== 'throw') return t.fail()
+  t.is(node.argument.type, 'opaque') // new expression is still opaque
+})
+
+test('lower JS throw with expression', (t) => {
+  const node = lower('throw x;', 'javascript').body[0]
+  if (node.type !== 'throw') return t.fail()
+  if (node.argument.type !== 'identifier') return t.fail()
+  t.is(node.argument.name, 'x')
+})
+
 // ── unary expressions ──────────────────────────────────────────────
 
 test('lower JS unary not expression', (t) => {

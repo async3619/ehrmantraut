@@ -1,8 +1,8 @@
 use ehrmantraut_core::ir::{
-  AccessorKind, AccessorProperty, ArrayExpr, Assignment, BinaryExpr, Block, Call, ConditionalExpr,
-  Identifier, IrExpr, KeyValueProperty, Literal, LiteralValue, MemberAccess, MethodProperty,
-  ObjectExpr, ObjectProperty, OpaqueExpr, Param, ShorthandProperty, SpreadProperty, UnaryExpr,
-  UpdateExpr,
+  AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, BinaryExpr, Block, Call,
+  ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
+  LiteralValue, MemberAccess, MethodProperty, ObjectExpr, ObjectProperty, OpaqueExpr, Param,
+  ReturnStmt, ShorthandProperty, SpreadProperty, UnaryExpr, UpdateExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -316,6 +316,115 @@ impl JsLowerer {
       operator: op_str,
       operand: Box::new(operand_expr),
       prefix,
+    }))
+  }
+
+  // ── Function expressions ──────────────────────────────────────
+
+  pub fn lower_function_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let name = self.child_by_field(node, "name").map(|n| self.node_text(n));
+
+    let params_node = self.child_by_field(node, "parameters");
+    let params = match params_node {
+      Some(p) => p
+        .children
+        .iter()
+        .filter(|c| c.named && !Self::is_ts_type_node(&c.kind))
+        .map(|c| Param {
+          span: c.span,
+          name: self.node_text(c),
+        })
+        .collect(),
+      None => Vec::new(),
+    };
+
+    let body_node = self.child_by_field(node, "body");
+    let body = match body_node {
+      Some(b) => self.lower_block(b)?,
+      None => Block {
+        span: node.span,
+        body: Vec::new(),
+      },
+    };
+
+    let is_async = node.children.iter().any(|c| c.kind == "async");
+    let is_generator = node.children.iter().any(|c| c.kind == "*");
+
+    Ok(IrExpr::FunctionExpr(FunctionDecl {
+      span: node.span,
+      name,
+      params,
+      body,
+      annotations: Annotations {
+        is_async,
+        is_generator,
+        ..Default::default()
+      },
+      is_arrow: false,
+    }))
+  }
+
+  // ── Arrow function ────────────────────────────────────────────
+
+  pub fn lower_arrow_function(&mut self, node: &crate::cst::CstNode) -> Result<IrExpr, LowerError> {
+    let is_async = node.children.iter().any(|c| c.kind == "async");
+
+    // Parameters: may be a single identifier or formal_parameters
+    let params = self
+      .child_by_field(node, "parameters")
+      .or_else(|| self.child_by_field(node, "parameter"))
+      .map(|p| {
+        if p.kind == "identifier" {
+          vec![Param {
+            span: p.span,
+            name: self.node_text(p),
+          }]
+        } else {
+          p.children
+            .iter()
+            .filter(|c| c.named && !Self::is_ts_type_node(&c.kind))
+            .map(|c| Param {
+              span: c.span,
+              name: self.node_text(c),
+            })
+            .collect()
+        }
+      })
+      .unwrap_or_default();
+
+    let body_node = self.child_by_field(node, "body");
+    let body = match body_node {
+      Some(b) if b.kind == "statement_block" => self.lower_block(b)?,
+      Some(b) => {
+        // Concise body: wrap expression in implicit return
+        let expr = self.lower_expression(b)?;
+        Block {
+          span: b.span,
+          body: vec![IrNode::Return(ReturnStmt {
+            span: b.span,
+            value: Some(expr),
+          })],
+        }
+      }
+      None => Block {
+        span: node.span,
+        body: Vec::new(),
+      },
+    };
+
+    Ok(IrExpr::FunctionExpr(FunctionDecl {
+      span: node.span,
+      name: None,
+      params,
+      body,
+      annotations: Annotations {
+        is_async,
+        ..Default::default()
+      },
+      is_arrow: true,
     }))
   }
 

@@ -63,6 +63,28 @@ impl JsLowerer {
         nodes.extend(self.lower_variable_declaration(child)?);
         continue;
       }
+      // Export statements containing variable declarations need multi-declarator handling
+      if child.kind == "export_statement" {
+        if let Some(decl) = child
+          .children
+          .iter()
+          .find(|c| c.kind == "lexical_declaration" || c.kind == "variable_declaration")
+        {
+          let mut var_nodes = self.lower_variable_declaration(decl)?;
+          for var_node in &mut var_nodes {
+            if let IrNode::VariableDecl(ref mut v) = var_node {
+              v.annotations.is_export = true;
+              v.annotations.declaration_kind = v
+                .annotations
+                .declaration_kind
+                .clone()
+                .or(Some(DeclKind::Import));
+            }
+          }
+          nodes.extend(var_nodes);
+          continue;
+        }
+      }
       if let Some(node) = self.lower_node(child)? {
         nodes.push(node);
       }
@@ -88,6 +110,8 @@ impl JsLowerer {
       }
       "function_declaration" => Ok(Some(self.lower_function_declaration(node)?)),
       "class_declaration" => Ok(Some(self.lower_class_declaration(node)?)),
+      "import_statement" => Ok(Some(self.lower_import_declaration(node)?)),
+      "export_statement" => Ok(Some(self.lower_export_declaration(node)?)),
 
       // Control flow
       "if_statement" => Ok(Some(self.lower_if_statement(node)?)),
@@ -98,6 +122,7 @@ impl JsLowerer {
       "switch_statement" => Ok(Some(self.lower_switch_statement(node)?)),
       "try_statement" => Ok(Some(self.lower_try_statement(node)?)),
       "return_statement" => Ok(Some(self.lower_return_statement(node)?)),
+      "throw_statement" => Ok(Some(self.lower_throw_statement(node)?)),
       "break_statement" => Ok(Some(self.lower_break_statement(node)?)),
       "continue_statement" => Ok(Some(self.lower_continue_statement(node)?)),
 
@@ -177,6 +202,9 @@ impl JsLowerer {
       "unary_expression" => self.lower_unary_expression(node),
       "update_expression" => self.lower_update_expression(node),
       "ternary_expression" => self.lower_conditional_expression(node),
+      "arrow_function" => self.lower_arrow_function(node),
+      "function_expression" => self.lower_function_expression(node),
+      "generator_function" => self.lower_function_expression(node),
       "array" => self.lower_array_expression(node),
       "object" => self.lower_object_expression(node),
       "parenthesized_expression" => {
