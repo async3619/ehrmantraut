@@ -597,6 +597,71 @@ test('lower JS empty object', (t) => {
   t.is(node.expression.properties.length, 0)
 })
 
+// ── destructuring patterns ─────────────────────────────────────────
+
+test('lower JS object destructuring', (t) => {
+  const node = lower('const { x, y } = obj;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  t.is(node.name, '')
+  t.truthy(node.pattern)
+  if (node.pattern?.kind !== 'object') return t.fail()
+  t.is(node.pattern.properties.length, 2)
+  t.is(node.pattern.properties[0].kind, 'shorthand')
+  if (node.pattern.properties[0].kind !== 'shorthand') return t.fail()
+  t.is(node.pattern.properties[0].name, 'x')
+})
+
+test('lower JS array destructuring', (t) => {
+  const node = lower('const [a, b] = arr;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  t.truthy(node.pattern)
+  if (node.pattern?.kind !== 'array') return t.fail()
+  t.is(node.pattern.elements.length, 2)
+})
+
+test('lower JS object destructuring with default', (t) => {
+  const node = lower('const { x = 10 } = obj;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.pattern?.kind !== 'object') return t.fail()
+  if (node.pattern.properties[0].kind !== 'shorthand') return t.fail()
+  t.truthy(node.pattern.properties[0].defaultValue)
+})
+
+test('lower JS object destructuring with rename', (t) => {
+  const node = lower('const { x: renamed } = obj;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.pattern?.kind !== 'object') return t.fail()
+  t.is(node.pattern.properties[0].kind, 'keyValue')
+  if (node.pattern.properties[0].kind !== 'keyValue') return t.fail()
+  t.is(node.pattern.properties[0].key, 'x')
+})
+
+test('lower JS object destructuring with rest', (t) => {
+  const node = lower('const { a, ...rest } = obj;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  if (node.pattern?.kind !== 'object') return t.fail()
+  t.is(node.pattern.properties.length, 2)
+  t.is(node.pattern.properties[1].kind, 'rest')
+  if (node.pattern.properties[1].kind !== 'rest') return t.fail()
+  t.is(node.pattern.properties[1].name, 'rest')
+})
+
+test('lower JS function param destructuring', (t) => {
+  const node = lower('function fn({ x, y }) {}', 'javascript').body[0]
+  if (node.type !== 'functionDecl') return t.fail()
+  t.is(node.params[0].name, '')
+  t.truthy(node.params[0].pattern)
+  if (node.params[0].pattern?.kind !== 'object') return t.fail()
+  t.is(node.params[0].pattern.properties.length, 2)
+})
+
+test('lower JS simple variable has no pattern', (t) => {
+  const node = lower('const x = 1;', 'javascript').body[0]
+  if (node.type !== 'variableDecl') return t.fail()
+  t.is(node.name, 'x')
+  t.is(node.pattern, null)
+})
+
 // ── spread expression ─────────────────────────────────────────────
 
 test('lower JS spread in call arguments', (t) => {

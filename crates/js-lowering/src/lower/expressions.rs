@@ -336,6 +336,8 @@ impl JsLowerer {
         .map(|c| Param {
           span: c.span,
           name: self.node_text(c),
+          pattern: None,
+          default_value: None,
         })
         .collect(),
       None => Vec::new(),
@@ -381,6 +383,8 @@ impl JsLowerer {
           vec![Param {
             span: p.span,
             name: self.node_text(p),
+            pattern: None,
+            default_value: None,
           }]
         } else {
           p.children
@@ -389,6 +393,8 @@ impl JsLowerer {
             .map(|c| Param {
               span: c.span,
               name: self.node_text(c),
+              pattern: None,
+              default_value: None,
             })
             .collect()
         }
@@ -684,6 +690,8 @@ impl JsLowerer {
         .map(|c| Param {
           span: c.span,
           name: self.node_text(c),
+          pattern: None,
+          default_value: None,
         })
         .collect(),
       None => Vec::new(),
