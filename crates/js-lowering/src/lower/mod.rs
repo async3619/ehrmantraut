@@ -128,6 +128,9 @@ impl JsLowerer {
       "break_statement" => Ok(Some(self.lower_break_statement(node)?)),
       "continue_statement" => Ok(Some(self.lower_continue_statement(node)?)),
 
+      // Labeled statement
+      "labeled_statement" => Ok(Some(self.lower_labeled_statement(node)?)),
+
       // Expressions as statements
       "expression_statement" => {
         let expr_child = self.first_named_child(node);

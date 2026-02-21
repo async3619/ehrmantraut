@@ -1,6 +1,6 @@
 use ehrmantraut_core::ir::{
   Block, BreakStmt, CatchClause, ContinueStmt, ForAnnotations, ForKind, ForStmt, IfStmt, IrNode,
-  ReturnStmt, SwitchCase, SwitchStmt, ThrowStmt, TryCatchStmt, WhileStmt,
+  LabeledStmt, ReturnStmt, SwitchCase, SwitchStmt, ThrowStmt, TryCatchStmt, WhileStmt,
 };
 
 use super::{JsLowerer, LowerError};
@@ -382,6 +382,33 @@ impl JsLowerer {
     Ok(IrNode::Continue(ContinueStmt {
       span: node.span,
       label,
+    }))
+  }
+
+  pub fn lower_labeled_statement(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrNode, LowerError> {
+    let label = self
+      .child_by_field(node, "label")
+      .map(|l| self.node_text(l))
+      .unwrap_or_default();
+
+    let body = self
+      .child_by_field(node, "body")
+      .map(|b| self.lower_node(b))
+      .transpose()?
+      .flatten()
+      .unwrap_or(IrNode::Opaque(ehrmantraut_core::ir::OpaqueNode {
+        span: node.span,
+        cst_kind: "missing_labeled_body".to_string(),
+        text: String::new(),
+      }));
+
+    Ok(IrNode::Labeled(LabeledStmt {
+      span: node.span,
+      label,
+      body: Box::new(body),
     }))
   }
 

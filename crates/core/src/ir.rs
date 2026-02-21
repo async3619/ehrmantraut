@@ -39,6 +39,9 @@ pub enum IrNode {
   Break(BreakStmt),
   Continue(ContinueStmt),
 
+  // Labeled
+  Labeled(LabeledStmt),
+
   // Expressions used as statements
   ExpressionStatement(ExpressionStatement),
 
@@ -306,6 +309,17 @@ pub struct BreakStmt {
 pub struct ContinueStmt {
   pub span: Span,
   pub label: Option<String>,
+}
+
+// ── Labeled statement ────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct LabeledStmt {
+  pub span: Span,
+  pub label: String,
+  pub body: Box<IrNode>,
 }
 
 // ── Expression nodes ─────────────────────────────────────────────────

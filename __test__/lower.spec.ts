@@ -122,8 +122,12 @@ test('lower JS break statement', (t) => {
 
 test('lower JS labeled break statement', (t) => {
   const node = lower('outer: while (true) { break outer; }', 'javascript').body[0]
-  if (node.type !== 'opaque') return // labeled statement wraps
-  t.pass()
+  if (node.type !== 'labeled') return t.fail()
+  t.is(node.label, 'outer')
+  if (node.body.type !== 'while') return t.fail()
+  const stmt = node.body.body.body[0]
+  if (stmt.type !== 'break') return t.fail()
+  t.is(stmt.label, 'outer')
 })
 
 test('lower JS continue statement', (t) => {
@@ -826,4 +830,31 @@ test('lower JS tagged template as call', (t) => {
   if (node.type !== 'expressionStatement') return t.fail()
   // tree-sitter treats tagged templates as call expressions
   t.is(node.expression.type, 'call')
+})
+
+// ── labeled statements ──────────────────────────────────────────────
+
+test('lower JS labeled statement', (t) => {
+  const node = lower('outer: for (let i = 0; i < 10; i++) { }', 'javascript').body[0]
+  if (node.type !== 'labeled') return t.fail()
+  t.is(node.label, 'outer')
+  t.is(node.body.type, 'for')
+})
+
+test('lower JS nested labeled statement', (t) => {
+  const node = lower('outer: inner: while (true) { break outer; }', 'javascript').body[0]
+  if (node.type !== 'labeled') return t.fail()
+  t.is(node.label, 'outer')
+  if (node.body.type !== 'labeled') return t.fail()
+  t.is(node.body.label, 'inner')
+  t.is(node.body.body.type, 'while')
+})
+
+test('lower JS labeled break extracts label', (t) => {
+  const node = lower('outer: while (true) { break outer; }', 'javascript').body[0]
+  if (node.type !== 'labeled') return t.fail()
+  if (node.body.type !== 'while') return t.fail()
+  const stmt = node.body.body.body[0]
+  if (stmt.type !== 'break') return t.fail()
+  t.is(stmt.label, 'outer')
 })
