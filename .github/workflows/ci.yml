@@ -63,7 +63,7 @@ jobs:
             build: npx napi build -p ehrmantraut --platform --release --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: CFLAGS_aarch64_unknown_linux_gnu=-mno-outline-atomics npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             build: npx napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-musl -x
