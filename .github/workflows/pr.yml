@@ -104,7 +104,14 @@ jobs:
         run: ${{ matrix.settings.build }}
         shell: bash
       - name: Copy native binding to root
-        run: cp crates/napi/${{ env.APP_NAME }}.*.node . 2>/dev/null || true
+        run: |
+          if compgen -G "crates/napi/${{ env.APP_NAME }}.*.node" > /dev/null; then
+            cp crates/napi/${{ env.APP_NAME }}.*.node .
+          fi
+          if ! compgen -G "${{ env.APP_NAME }}.*.node" > /dev/null; then
+            echo "Error: native binding '${{ env.APP_NAME }}.*.node' not found"
+            exit 1
+          fi
         shell: bash
       - name: Test bindings
         if: ${{ !contains(matrix.settings.target, 'linux') }}
