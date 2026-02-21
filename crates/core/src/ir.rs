@@ -306,22 +306,12 @@ pub struct Block {
 #[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
 pub struct Annotations {
-  #[serde(skip_serializing_if = "Option::is_none")]
   pub scope_level: Option<ScopeLevel>,
-  #[serde(skip_serializing_if = "Option::is_none")]
   pub declaration_kind: Option<DeclKind>,
-  #[serde(skip_serializing_if = "is_false")]
   pub is_async: bool,
-  #[serde(skip_serializing_if = "is_false")]
   pub is_generator: bool,
-  #[serde(skip_serializing_if = "is_false")]
   pub is_export: bool,
-  #[serde(skip_serializing_if = "is_false")]
   pub is_default: bool,
-}
-
-fn is_false(v: &bool) -> bool {
-  !v
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]

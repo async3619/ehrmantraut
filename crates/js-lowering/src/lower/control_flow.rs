@@ -27,7 +27,7 @@ impl JsLowerer {
 
     let consequent_node = self.child_by_field(node, "consequence");
     let consequent = match consequent_node {
-      Some(c) => self.lower_block(c)?,
+      Some(c) => self.lower_block_or_wrap(c)?,
       None => Block {
         span: node.span,
         body: Vec::new(),
