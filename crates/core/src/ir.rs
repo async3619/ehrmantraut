@@ -24,6 +24,10 @@ pub enum IrNode {
   FunctionDecl(FunctionDecl),
   ClassDecl(ClassDecl),
 
+  // Class members
+  MethodDefinition(MethodDefinition),
+  PropertyDefinition(PropertyDefinition),
+
   // Module
   ImportDecl(ImportDecl),
   ExportDecl(ExportDecl),
@@ -38,6 +42,9 @@ pub enum IrNode {
   Throw(ThrowStmt),
   Break(BreakStmt),
   Continue(ContinueStmt),
+
+  // Labeled
+  Labeled(LabeledStmt),
 
   // Expressions used as statements
   ExpressionStatement(ExpressionStatement),
@@ -121,6 +128,55 @@ pub struct ClassDecl {
   pub super_class: Option<IrExpr>,
   pub body: Vec<IrNode>,
   pub annotations: Annotations,
+}
+
+// ── Class member nodes ───────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct MethodDefinition {
+  pub span: Span,
+  pub key: IrExpr,
+  pub kind: MethodKind,
+  pub params: Vec<Param>,
+  pub body: Block,
+  pub is_static: bool,
+  pub computed: bool,
+  pub accessibility: Option<Accessibility>,
+  pub is_async: bool,
+  pub is_generator: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub enum MethodKind {
+  Method,
+  Constructor,
+  Get,
+  Set,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyDefinition {
+  pub span: Span,
+  pub key: IrExpr,
+  pub value: Option<IrExpr>,
+  pub is_static: bool,
+  pub computed: bool,
+  pub accessibility: Option<Accessibility>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub enum Accessibility {
+  Public,
+  Private,
+  Protected,
 }
 
 // ── Module nodes (import / export) ───────────────────────────────────
@@ -306,6 +362,17 @@ pub struct BreakStmt {
 pub struct ContinueStmt {
   pub span: Span,
   pub label: Option<String>,
+}
+
+// ── Labeled statement ────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct LabeledStmt {
+  pub span: Span,
+  pub label: String,
+  pub body: Box<IrNode>,
 }
 
 // ── Expression nodes ─────────────────────────────────────────────────

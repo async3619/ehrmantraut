@@ -331,21 +331,7 @@ impl JsLowerer {
   ) -> Result<IrExpr, LowerError> {
     let name = self.child_by_field(node, "name").map(|n| self.node_text(n));
 
-    let params_node = self.child_by_field(node, "parameters");
-    let params = match params_node {
-      Some(p) => p
-        .children
-        .iter()
-        .filter(|c| c.named && !Self::is_ts_type_node(&c.kind))
-        .map(|c| Param {
-          span: c.span,
-          name: self.node_text(c),
-          pattern: None,
-          default_value: None,
-        })
-        .collect(),
-      None => Vec::new(),
-    };
+    let params = self.lower_formal_parameters(node);
 
     let body_node = self.child_by_field(node, "body");
     let body = match body_node {
@@ -394,12 +380,7 @@ impl JsLowerer {
           p.children
             .iter()
             .filter(|c| c.named && !Self::is_ts_type_node(&c.kind))
-            .map(|c| Param {
-              span: c.span,
-              name: self.node_text(c),
-              pattern: None,
-              default_value: None,
-            })
+            .filter_map(|c| self.lower_param(c).ok())
             .collect()
         }
       })
@@ -802,21 +783,7 @@ impl JsLowerer {
       }),
     };
 
-    let params_node = self.child_by_field(node, "parameters");
-    let params = match params_node {
-      Some(p) => p
-        .children
-        .iter()
-        .filter(|c| c.named && !Self::is_ts_type_node(&c.kind))
-        .map(|c| Param {
-          span: c.span,
-          name: self.node_text(c),
-          pattern: None,
-          default_value: None,
-        })
-        .collect(),
-      None => Vec::new(),
-    };
+    let params = self.lower_formal_parameters(node);
 
     let body_node = self.child_by_field(node, "body");
     let body = match body_node {
