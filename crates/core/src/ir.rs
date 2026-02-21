@@ -68,6 +68,10 @@ pub enum IrExpr {
   ObjectExpr(ObjectExpr),
   FunctionExpr(FunctionDecl),
   NewExpr(NewExpr),
+  AwaitExpr(AwaitExpr),
+  YieldExpr(YieldExpr),
+  TemplateLiteral(TemplateLiteral),
+  TaggedTemplate(TaggedTemplate),
   SpreadExpr(SpreadExpr),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
@@ -624,6 +628,45 @@ pub struct AssignmentPattern {
 pub struct RestPattern {
   pub span: Span,
   pub argument: Box<Pattern>,
+}
+
+// ── Template literals ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct TemplateLiteral {
+  pub span: Span,
+  pub quasis: Vec<String>,
+  pub expressions: Vec<IrExpr>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct TaggedTemplate {
+  pub span: Span,
+  pub tag: Box<IrExpr>,
+  pub quasi: Box<IrExpr>,
+}
+
+// ── Await / Yield ───────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct AwaitExpr {
+  pub span: Span,
+  pub argument: Box<IrExpr>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct YieldExpr {
+  pub span: Span,
+  pub argument: Option<Box<IrExpr>>,
+  pub delegate: bool,
 }
 
 // ── New expression ──────────────────────────────────────────────────

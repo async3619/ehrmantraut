@@ -749,3 +749,81 @@ test('lower JS super expression', (t) => {
   const body = node.body
   t.truthy(body.length > 0)
 })
+
+// ── await / yield ─────────────────────────────────────────────────
+
+test('lower JS await expression', (t) => {
+  const ir = lower('async function f() { const r = await fetch("/api"); }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const decl = fn.body.body[0]
+  if (decl.type !== 'variableDecl') return t.fail()
+  if (decl.value?.type !== 'awaitExpr') return t.fail()
+  t.is(decl.value.argument.type, 'call')
+})
+
+test('lower JS yield expression', (t) => {
+  const ir = lower('function* gen() { yield 1; }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const stmt = fn.body.body[0]
+  if (stmt.type !== 'expressionStatement') return t.fail()
+  if (stmt.expression.type !== 'yieldExpr') return t.fail()
+  t.is(stmt.expression.delegate, false)
+  t.truthy(stmt.expression.argument)
+})
+
+test('lower JS yield delegate expression', (t) => {
+  const ir = lower('function* gen() { yield* other(); }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const stmt = fn.body.body[0]
+  if (stmt.type !== 'expressionStatement') return t.fail()
+  if (stmt.expression.type !== 'yieldExpr') return t.fail()
+  t.is(stmt.expression.delegate, true)
+})
+
+test('lower JS yield without value', (t) => {
+  const ir = lower('function* gen() { yield; }', 'javascript')
+  const fn = ir.body[0]
+  if (fn.type !== 'functionDecl') return t.fail()
+  const stmt = fn.body.body[0]
+  if (stmt.type !== 'expressionStatement') return t.fail()
+  if (stmt.expression.type !== 'yieldExpr') return t.fail()
+  t.is(stmt.expression.argument, null)
+})
+
+// ── template literals ─────────────────────────────────────────────
+
+test('lower JS simple template string (no interpolation)', (t) => {
+  const node = lower('`hello`;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  t.is(node.expression.type, 'literal')
+})
+
+test('lower JS template literal with interpolation', (t) => {
+  const node = lower('`hello ${name} world`;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'templateLiteral') return t.fail()
+  t.is(node.expression.quasis.length, 2)
+  t.is(node.expression.quasis[0], 'hello ')
+  t.is(node.expression.quasis[1], ' world')
+  t.is(node.expression.expressions.length, 1)
+  if (node.expression.expressions[0].type !== 'identifier') return t.fail()
+  t.is(node.expression.expressions[0].name, 'name')
+})
+
+test('lower JS template literal with multiple expressions', (t) => {
+  const node = lower('`${a} + ${b}`;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'templateLiteral') return t.fail()
+  t.is(node.expression.expressions.length, 2)
+  t.is(node.expression.quasis.length, 3)
+})
+
+test('lower JS tagged template as call', (t) => {
+  const node = lower('tag`hello ${x}`;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  // tree-sitter treats tagged templates as call expressions
+  t.is(node.expression.type, 'call')
+})

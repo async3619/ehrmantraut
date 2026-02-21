@@ -1,8 +1,9 @@
 use ehrmantraut_core::ir::{
-  AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, BinaryExpr, Block, Call,
-  ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
+  AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, AwaitExpr, BinaryExpr, Block,
+  Call, ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
   LiteralValue, MemberAccess, MethodProperty, NewExpr, ObjectExpr, ObjectProperty, OpaqueExpr,
-  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, UnaryExpr, UpdateExpr,
+  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, TemplateLiteral, UnaryExpr,
+  UpdateExpr, YieldExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -434,6 +435,92 @@ impl JsLowerer {
         ..Default::default()
       },
       is_arrow: true,
+    }))
+  }
+
+  // ── Template literal ──────────────────────────────────────────
+
+  pub fn lower_template_string(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let has_interpolation = node
+      .children
+      .iter()
+      .any(|c| c.kind == "template_substitution");
+
+    if !has_interpolation {
+      // Simple template string without interpolation — lower as string literal
+      return Ok(self.lower_string_literal(node));
+    }
+
+    let mut quasis = Vec::new();
+    let mut expressions = Vec::new();
+    let mut current_quasi = String::new();
+
+    for child in &node.children {
+      match child.kind.as_str() {
+        "string_fragment" | "escape_sequence" => {
+          current_quasi.push_str(&self.node_text(child));
+        }
+        "template_substitution" => {
+          quasis.push(std::mem::take(&mut current_quasi));
+          if let Some(expr_node) = self.first_named_child(child) {
+            let expr = self.lower_expression(expr_node)?;
+            expressions.push(expr);
+          }
+        }
+        _ => {}
+      }
+    }
+    // Push the trailing quasi
+    quasis.push(current_quasi);
+
+    Ok(IrExpr::TemplateLiteral(TemplateLiteral {
+      span: node.span,
+      quasis,
+      expressions,
+    }))
+  }
+
+  // ── Await / Yield ─────────────────────────────────────────────
+
+  pub fn lower_await_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let argument = self
+      .first_named_child(node)
+      .map(|a| self.lower_expression(a))
+      .transpose()?
+      .unwrap_or(IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_await_argument".to_string(),
+        text: String::new(),
+      }));
+
+    Ok(IrExpr::AwaitExpr(AwaitExpr {
+      span: node.span,
+      argument: Box::new(argument),
+    }))
+  }
+
+  pub fn lower_yield_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let delegate = node.children.iter().any(|c| !c.named && c.kind == "*");
+
+    let argument = self
+      .first_named_child(node)
+      .map(|a| self.lower_expression(a))
+      .transpose()?
+      .map(Box::new);
+
+    Ok(IrExpr::YieldExpr(YieldExpr {
+      span: node.span,
+      argument,
+      delegate,
     }))
   }
 
