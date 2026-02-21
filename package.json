@@ -20,6 +20,7 @@
   "files": [
     "index.d.ts",
     "index.js",
+    "types.d.ts",
     "browser.js"
   ],
   "napi": {
@@ -45,8 +46,8 @@
   "scripts": {
     "artifacts": "napi artifacts",
     "bench": "node --import @oxc-node/core/register benchmark/bench.ts",
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
+    "build": "cargo test -p ehrmantraut-core -p ehrmantraut-js-lowering && napi build -p ehrmantraut --platform --release && node scripts/bundle-types.mjs",
+    "build:debug": "cargo test -p ehrmantraut-core -p ehrmantraut-js-lowering && napi build -p ehrmantraut --platform && node scripts/bundle-types.mjs",
     "format": "run-p format:prettier format:rs format:toml",
     "format:prettier": "prettier . -w",
     "format:toml": "taplo format",
@@ -54,7 +55,7 @@
     "lint": "oxlint .",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
-    "preversion": "napi build --platform && git add .",
+    "preversion": "napi build -p ehrmantraut --platform && git add .",
     "version": "napi version",
     "prepare": "husky"
   },
