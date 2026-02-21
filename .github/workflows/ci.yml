@@ -52,28 +52,28 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: napi build -p ehrmantraut --platform --release --target x86_64-apple-darwin
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
+            build: napi build -p ehrmantraut --platform --release --target x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: yarn build --target x86_64-unknown-linux-gnu --use-napi-cross
+            build: napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: napi build -p ehrmantraut --platform --release --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: yarn build --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            build: yarn build --target x86_64-unknown-linux-musl -x
+            build: napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-musl -x
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            build: yarn build --target aarch64-unknown-linux-musl -x
+            build: napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-musl -x
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
+            build: napi build -p ehrmantraut --platform --release --target aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@22
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -123,6 +123,9 @@ jobs:
       - name: Build
         if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: ${{ matrix.settings.build }}
+        shell: bash
+      - name: Copy native binding to root
+        run: cp crates/napi/${{ env.APP_NAME }}.*.node . 2>/dev/null || true
         shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v6
