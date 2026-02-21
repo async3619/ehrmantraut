@@ -1,8 +1,8 @@
 use ehrmantraut_core::ir::{
   AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, BinaryExpr, Block, Call,
   ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
-  LiteralValue, MemberAccess, MethodProperty, ObjectExpr, ObjectProperty, OpaqueExpr, Param,
-  ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, UnaryExpr, UpdateExpr,
+  LiteralValue, MemberAccess, MethodProperty, NewExpr, ObjectExpr, ObjectProperty, OpaqueExpr,
+  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, UnaryExpr, UpdateExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -99,6 +99,7 @@ impl JsLowerer {
       span: node.span,
       callee: Box::new(callee),
       arguments,
+      optional: Self::has_optional_chain(node),
     }))
   }
 
@@ -132,6 +133,7 @@ impl JsLowerer {
       object: Box::new(obj_expr),
       property: Box::new(prop_expr),
       computed: false,
+      optional: Self::has_optional_chain(node),
     }))
   }
 
@@ -165,6 +167,7 @@ impl JsLowerer {
       object: Box::new(obj_expr),
       property: Box::new(idx_expr),
       computed: true,
+      optional: Self::has_optional_chain(node),
     }))
   }
 
@@ -431,6 +434,37 @@ impl JsLowerer {
         ..Default::default()
       },
       is_arrow: true,
+    }))
+  }
+
+  // ── New expression ────────────────────────────────────────────
+
+  pub fn lower_new_expression(&mut self, node: &crate::cst::CstNode) -> Result<IrExpr, LowerError> {
+    let callee_node = self.child_by_field(node, "constructor");
+    let callee = match callee_node {
+      Some(c) => self.lower_expression(c)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_constructor".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    let args_node = self.child_by_field(node, "arguments");
+    let arguments = match args_node {
+      Some(args) => args
+        .children
+        .iter()
+        .filter(|c| c.named)
+        .map(|c| self.lower_expression(c))
+        .collect::<Result<Vec<_>, _>>()?,
+      None => Vec::new(),
+    };
+
+    Ok(IrExpr::NewExpr(NewExpr {
+      span: node.span,
+      callee: Box::new(callee),
+      arguments,
     }))
   }
 
@@ -733,5 +767,14 @@ impl JsLowerer {
       is_async,
       is_generator,
     }))
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────
+
+  fn has_optional_chain(node: &crate::cst::CstNode) -> bool {
+    node
+      .children
+      .iter()
+      .any(|c| c.kind == "optional_chain" || c.field_name.as_deref() == Some("optional_chain"))
   }
 }
