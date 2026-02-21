@@ -1,9 +1,9 @@
-name: Continuous Integration
+name: CI
 env:
   DEBUG: napi:*
   APP_NAME: ehrmantraut
   MACOSX_DEPLOYMENT_TARGET: '10.13'
-  CARGO_INCREMENTAL: '0'
+  CARGO_INCREMENTAL: '1'
 'on':
   push:
     branches:
@@ -17,6 +17,7 @@ env:
       - '**/*.gitignore'
       - .editorconfig
       - docs/**
+  pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -35,8 +36,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
       - name: Install dependencies
         run: yarn install
       - name: Oxlint
@@ -64,13 +63,16 @@ jobs:
             build: npx napi build -p ehrmantraut --platform --release --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu -x
+            zigbuild: true
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             build: npx napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-musl -x
+            zigbuild: true
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-musl -x
+            zigbuild: true
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: npx napi build -p ehrmantraut --platform --release --target aarch64-pc-windows-msvc
@@ -84,44 +86,35 @@ jobs:
           node-version: 24
           cache: yarn
       - name: Install
-        id: rust-toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           targets: ${{ matrix.settings.target }}
-      - name: Cache build artifact
-        id: build-cache
+      - name: Cache cargo
         uses: actions/cache@v5
         with:
           path: |
-            ${{ env.APP_NAME }}.*.node
-            crates/napi/${{ env.APP_NAME }}.*.node
-          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('crates/**', 'Cargo.toml', 'Cargo.lock') }}
-      - name: Cache cargo
-        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.settings.target }}
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.napi-rs
+            .cargo-cache
+            target/
+          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
       - uses: mlugg/setup-zig@v2
-        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
+        if: ${{ matrix.settings.zigbuild }}
         with:
           version: 0.14.1
       - name: Install cargo-zigbuild
         uses: taiki-e/install-action@v2
-        if: ${{ contains(matrix.settings.target, 'musl') && steps.build-cache.outputs.cache-hit != 'true' }}
+        if: ${{ matrix.settings.zigbuild }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           tool: cargo-zigbuild
-      - name: Setup toolchain
-        run: ${{ matrix.settings.setup }}
-        if: ${{ matrix.settings.setup && steps.build-cache.outputs.cache-hit != 'true' }}
-        shell: bash
       - name: Install dependencies
-        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: yarn install
       - name: Build
-        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: ${{ matrix.settings.build }}
         shell: bash
       - name: Copy native binding to root
@@ -253,7 +246,7 @@ jobs:
         with:
           image: ${{ steps.docker.outputs.IMAGE }}
           name: test-bindings-${{ matrix.target }}
-          options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}'
+          options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
           args: yarn test
   publish:
     name: Publish
@@ -265,6 +258,7 @@ jobs:
       - lint
       - test-macOS-windows-binding
       - test-linux-binding
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
         with:
