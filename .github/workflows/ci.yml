@@ -63,7 +63,7 @@ jobs:
             build: npx napi build -p ehrmantraut --platform --release --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu -x
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             build: npx napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-musl -x
@@ -99,12 +99,12 @@ jobs:
             target/
           key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
       - uses: mlugg/setup-zig@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.build, ' -x') }}
         with:
           version: 0.14.1
       - name: Install cargo-zigbuild
         uses: taiki-e/install-action@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.build, ' -x') }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
@@ -242,31 +242,7 @@ jobs:
           platforms: all
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         if: ${{ contains(matrix.target, 'armv7') }}
-      - name: Debug binding load error
-        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-        run: |
-          file ehrmantraut.linux-arm64-gnu.node
-          node -e "
-            const { createRequire } = require('node:module');
-            const req = createRequire(require('path').resolve('index.js'));
-            try {
-              req('./ehrmantraut.linux-arm64-gnu.node');
-              console.log('OK: binary loaded');
-            } catch (e) {
-              let err = e;
-              while (err) {
-                process.stderr.write('[ERR] ' + err.message + '\n');
-                err = err.cause;
-              }
-            }
-          " 2>&1 || true
-        shell: bash
-        continue-on-error: true
-      - name: Test bindings (native)
-        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-        run: yarn test
-      - name: Test bindings (docker)
-        if: ${{ matrix.target != 'aarch64-unknown-linux-gnu' }}
+      - name: Test bindings
         uses: tj-actions/docker-run@v2
         with:
           image: ${{ steps.docker.outputs.IMAGE }}
