@@ -174,6 +174,11 @@ impl JsLowerer {
       "true" | "false" => Ok(self.lower_boolean_literal(node)),
       "null" => Ok(self.lower_null_literal(node)),
       "undefined" => Ok(self.lower_undefined(node)),
+      "unary_expression" => self.lower_unary_expression(node),
+      "update_expression" => self.lower_update_expression(node),
+      "ternary_expression" => self.lower_conditional_expression(node),
+      "array" => self.lower_array_expression(node),
+      "object" => self.lower_object_expression(node),
       "parenthesized_expression" => {
         // Unwrap parenthesized expression
         match self.first_named_child(node) {
