@@ -67,6 +67,7 @@ pub enum IrExpr {
   ArrayExpr(ArrayExpr),
   ObjectExpr(ObjectExpr),
   FunctionExpr(FunctionDecl),
+  NewExpr(NewExpr),
   SpreadExpr(SpreadExpr),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
@@ -621,6 +622,17 @@ pub struct AssignmentPattern {
 pub struct RestPattern {
   pub span: Span,
   pub argument: Box<Pattern>,
+}
+
+// ── New expression ──────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct NewExpr {
+  pub span: Span,
+  pub callee: Box<IrExpr>,
+  pub arguments: Vec<IrExpr>,
 }
 
 // ── Spread expression ───────────────────────────────────────────────

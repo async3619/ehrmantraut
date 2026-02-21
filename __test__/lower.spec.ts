@@ -392,7 +392,7 @@ test('lower JS function declaration has isArrow false', (t) => {
 test('lower JS throw statement', (t) => {
   const node = lower('throw new Error("msg");', 'javascript').body[0]
   if (node.type !== 'throw') return t.fail()
-  t.is(node.argument.type, 'opaque') // new expression is still opaque
+  t.is(node.argument.type, 'newExpr')
 })
 
 test('lower JS throw with expression', (t) => {
@@ -690,6 +690,24 @@ test('lower JS this expression', (t) => {
   if (node.expression.type !== 'memberAccess') return t.fail()
   if (node.expression.object.type !== 'identifier') return t.fail()
   t.is(node.expression.object.name, 'this')
+})
+
+// ── new expression ────────────────────────────────────────────────
+
+test('lower JS new expression', (t) => {
+  const node = lower('new Foo(1, 2);', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'newExpr') return t.fail()
+  if (node.expression.callee.type !== 'identifier') return t.fail()
+  t.is(node.expression.callee.name, 'Foo')
+  t.is(node.expression.arguments.length, 2)
+})
+
+test('lower JS new expression without args', (t) => {
+  const node = lower('new Foo;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'newExpr') return t.fail()
+  t.is(node.expression.arguments.length, 0)
 })
 
 test('lower JS super expression', (t) => {
