@@ -259,7 +259,7 @@ jobs:
       - test-macOS-windows-binding
       - test-linux-binding
     if: github.event_name == 'push'
-ㅓ    steps:
+    steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
