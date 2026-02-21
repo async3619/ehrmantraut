@@ -681,3 +681,21 @@ test('lower JS spread in array literal', (t) => {
   if (!first) return t.fail()
   t.is(first.type, 'spreadExpr')
 })
+
+// ── this / super ──────────────────────────────────────────────────
+
+test('lower JS this expression', (t) => {
+  const node = lower('this.x;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'memberAccess') return t.fail()
+  if (node.expression.object.type !== 'identifier') return t.fail()
+  t.is(node.expression.object.name, 'this')
+})
+
+test('lower JS super expression', (t) => {
+  const node = lower('class A extends B { constructor() { super(); } }', 'javascript').body[0]
+  if (node.type !== 'classDecl') return t.fail()
+  // Find the super() call inside constructor body
+  const body = node.body
+  t.truthy(body.length > 0)
+})

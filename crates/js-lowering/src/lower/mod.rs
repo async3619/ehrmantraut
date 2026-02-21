@@ -182,6 +182,7 @@ impl JsLowerer {
       "binary_expression" => self.lower_binary_expression(node),
       "identifier" | "shorthand_property_identifier" => Ok(self.lower_identifier(node)),
       "property_identifier" => Ok(self.lower_identifier(node)),
+      "this" | "super" => Ok(self.lower_identifier(node)),
       "number" => Ok(self.lower_number_literal(node)),
       "string" => Ok(self.lower_string_literal(node)),
       "template_string" => {
