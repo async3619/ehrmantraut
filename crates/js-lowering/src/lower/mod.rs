@@ -205,6 +205,7 @@ impl JsLowerer {
       "arrow_function" => self.lower_arrow_function(node),
       "function_expression" => self.lower_function_expression(node),
       "generator_function" => self.lower_function_expression(node),
+      "spread_element" => self.lower_spread_expression(node),
       "array" => self.lower_array_expression(node),
       "object" => self.lower_object_expression(node),
       "parenthesized_expression" => {

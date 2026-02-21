@@ -596,3 +596,23 @@ test('lower JS empty object', (t) => {
   if (node.expression.type !== 'objectExpr') return t.fail()
   t.is(node.expression.properties.length, 0)
 })
+
+// ── spread expression ─────────────────────────────────────────────
+
+test('lower JS spread in call arguments', (t) => {
+  const node = lower('fn(...args);', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'call') return t.fail()
+  t.is(node.expression.arguments[0].type, 'spreadExpr')
+  if (node.expression.arguments[0].type !== 'spreadExpr') return t.fail()
+  t.is(node.expression.arguments[0].argument.type, 'identifier')
+})
+
+test('lower JS spread in array literal', (t) => {
+  const node = lower('[...arr, 1];', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'arrayExpr') return t.fail()
+  const first = node.expression.elements[0]
+  if (!first) return t.fail()
+  t.is(first.type, 'spreadExpr')
+})

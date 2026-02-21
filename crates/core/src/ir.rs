@@ -67,6 +67,7 @@ pub enum IrExpr {
   ArrayExpr(ArrayExpr),
   ObjectExpr(ObjectExpr),
   FunctionExpr(FunctionDecl),
+  SpreadExpr(SpreadExpr),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
 }
@@ -537,6 +538,16 @@ pub enum AccessorKind {
 pub struct SpreadProperty {
   pub span: Span,
   pub argument: IrExpr,
+}
+
+// ── Spread expression ───────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct SpreadExpr {
+  pub span: Span,
+  pub argument: Box<IrExpr>,
 }
 
 // ── Opaque (escape hatch) ────────────────────────────────────────────

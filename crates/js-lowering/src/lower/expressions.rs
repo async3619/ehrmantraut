@@ -2,7 +2,7 @@ use ehrmantraut_core::ir::{
   AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, BinaryExpr, Block, Call,
   ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
   LiteralValue, MemberAccess, MethodProperty, ObjectExpr, ObjectProperty, OpaqueExpr, Param,
-  ReturnStmt, ShorthandProperty, SpreadProperty, UnaryExpr, UpdateExpr,
+  ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, UnaryExpr, UpdateExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -425,6 +425,28 @@ impl JsLowerer {
         ..Default::default()
       },
       is_arrow: true,
+    }))
+  }
+
+  // ── Spread ────────────────────────────────────────────────────
+
+  pub fn lower_spread_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let argument = self
+      .first_named_child(node)
+      .map(|a| self.lower_expression(a))
+      .transpose()?
+      .unwrap_or(IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_spread_argument".to_string(),
+        text: String::new(),
+      }));
+
+    Ok(IrExpr::SpreadExpr(SpreadExpr {
+      span: node.span,
+      argument: Box::new(argument),
     }))
   }
 
