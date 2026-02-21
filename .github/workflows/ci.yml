@@ -52,28 +52,28 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: npx napi build -p ehrmantraut --platform --release --target x86_64-apple-darwin
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
+            build: npx napi build -p ehrmantraut --platform --release --target x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: yarn build --target x86_64-unknown-linux-gnu --use-napi-cross
+            build: npx napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: npx napi build -p ehrmantraut --platform --release --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: yarn build --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            build: yarn build --target x86_64-unknown-linux-musl -x
+            build: npx napi build -p ehrmantraut --platform --release --target x86_64-unknown-linux-musl -x
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            build: yarn build --target aarch64-unknown-linux-musl -x
+            build: npx napi build -p ehrmantraut --platform --release --target aarch64-unknown-linux-musl -x
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
+            build: npx napi build -p ehrmantraut --platform --release --target aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@22
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -93,8 +93,10 @@ jobs:
         id: build-cache
         uses: actions/cache@v5
         with:
-          path: ${{ env.APP_NAME }}.*.node
-          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('src/**', 'build.rs', 'Cargo.toml', 'Cargo.lock') }}
+          path: |
+            ${{ env.APP_NAME }}.*.node
+            crates/napi/${{ env.APP_NAME }}.*.node
+          key: build-${{ matrix.settings.target }}-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('crates/**', 'Cargo.toml', 'Cargo.lock') }}
       - name: Cache cargo
         if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         uses: Swatinem/rust-cache@v2
@@ -122,13 +124,23 @@ jobs:
         if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
         run: ${{ matrix.settings.build }}
         shell: bash
+      - name: Copy native binding to root
+        run: |
+          if compgen -G "crates/napi/${{ env.APP_NAME }}.*.node" > /dev/null; then
+            cp crates/napi/${{ env.APP_NAME }}.*.node .
+          fi
+          if ! compgen -G "${{ env.APP_NAME }}.*.node" > /dev/null; then
+            echo "Error: native binding '${{ env.APP_NAME }}.*.node' not found"
+            exit 1
+          fi
+        shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
             ${{ env.APP_NAME }}.*.node
-            ${{ env.APP_NAME }}.*.wasm
+            crates/napi/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
