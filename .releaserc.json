@@ -16,6 +16,7 @@
         "message": "chore(📦): ${nextRelease.version}\n\n${nextRelease.notes}"
       }
     ],
-    "@semantic-release/github"
+    "@semantic-release/github",
+    ["@semantic-release/npm", { "npmPublish": false }]
   ]
 }
