@@ -241,6 +241,10 @@ jobs:
       - name: List packages
         run: ls -R .
         shell: bash
+      - name: Check binary dependencies
+        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+        run: ldd ehrmantraut.linux-arm64-gnu.node || true
+        shell: bash
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         if: ${{ contains(matrix.target, 'armv7') }}
