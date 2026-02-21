@@ -98,6 +98,7 @@ impl JsLowerer {
       "switch_statement" => Ok(Some(self.lower_switch_statement(node)?)),
       "try_statement" => Ok(Some(self.lower_try_statement(node)?)),
       "return_statement" => Ok(Some(self.lower_return_statement(node)?)),
+      "throw_statement" => Ok(Some(self.lower_throw_statement(node)?)),
       "break_statement" => Ok(Some(self.lower_break_statement(node)?)),
       "continue_statement" => Ok(Some(self.lower_continue_statement(node)?)),
 

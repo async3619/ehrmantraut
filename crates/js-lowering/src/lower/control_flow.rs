@@ -1,6 +1,6 @@
 use ehrmantraut_core::ir::{
   Block, BreakStmt, CatchClause, ContinueStmt, ForAnnotations, ForKind, ForStmt, IfStmt, IrNode,
-  ReturnStmt, SwitchCase, SwitchStmt, TryCatchStmt, WhileStmt,
+  ReturnStmt, SwitchCase, SwitchStmt, ThrowStmt, TryCatchStmt, WhileStmt,
 };
 
 use super::{JsLowerer, LowerError};
@@ -332,6 +332,28 @@ impl JsLowerer {
     Ok(IrNode::Return(ReturnStmt {
       span: node.span,
       value,
+    }))
+  }
+
+  pub fn lower_throw_statement(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrNode, LowerError> {
+    let argument = self
+      .first_named_child(node)
+      .map(|v| self.lower_expression(v))
+      .transpose()?
+      .unwrap_or(ehrmantraut_core::ir::IrExpr::Opaque(
+        ehrmantraut_core::ir::OpaqueExpr {
+          span: node.span,
+          cst_kind: "missing_throw_argument".to_string(),
+          text: String::new(),
+        },
+      ));
+
+    Ok(IrNode::Throw(ThrowStmt {
+      span: node.span,
+      argument,
     }))
   }
 

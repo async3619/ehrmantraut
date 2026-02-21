@@ -31,6 +31,7 @@ pub enum IrNode {
   Switch(SwitchStmt),
   TryCatch(TryCatchStmt),
   Return(ReturnStmt),
+  Throw(ThrowStmt),
   Break(BreakStmt),
   Continue(ContinueStmt),
 
@@ -201,6 +202,14 @@ pub struct CatchClause {
 pub struct ReturnStmt {
   pub span: Span,
   pub value: Option<IrExpr>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThrowStmt {
+  pub span: Span,
+  pub argument: IrExpr,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]

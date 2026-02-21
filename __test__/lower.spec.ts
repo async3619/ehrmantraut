@@ -247,6 +247,21 @@ test('lower JS class declaration with extends', (t) => {
   t.truthy(node.superClass)
 })
 
+// ── throw statement ────────────────────────────────────────────────
+
+test('lower JS throw statement', (t) => {
+  const node = lower('throw new Error("msg");', 'javascript').body[0]
+  if (node.type !== 'throw') return t.fail()
+  t.is(node.argument.type, 'opaque') // new expression is still opaque
+})
+
+test('lower JS throw with expression', (t) => {
+  const node = lower('throw x;', 'javascript').body[0]
+  if (node.type !== 'throw') return t.fail()
+  if (node.argument.type !== 'identifier') return t.fail()
+  t.is(node.argument.name, 'x')
+})
+
 // ── unary expressions ──────────────────────────────────────────────
 
 test('lower JS unary not expression', (t) => {
