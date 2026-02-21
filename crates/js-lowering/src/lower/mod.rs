@@ -63,6 +63,28 @@ impl JsLowerer {
         nodes.extend(self.lower_variable_declaration(child)?);
         continue;
       }
+      // Export statements containing variable declarations need multi-declarator handling
+      if child.kind == "export_statement" {
+        if let Some(decl) = child
+          .children
+          .iter()
+          .find(|c| c.kind == "lexical_declaration" || c.kind == "variable_declaration")
+        {
+          let mut var_nodes = self.lower_variable_declaration(decl)?;
+          for var_node in &mut var_nodes {
+            if let IrNode::VariableDecl(ref mut v) = var_node {
+              v.annotations.is_export = true;
+              v.annotations.declaration_kind = v
+                .annotations
+                .declaration_kind
+                .clone()
+                .or(Some(DeclKind::Import));
+            }
+          }
+          nodes.extend(var_nodes);
+          continue;
+        }
+      }
       if let Some(node) = self.lower_node(child)? {
         nodes.push(node);
       }
@@ -88,6 +110,8 @@ impl JsLowerer {
       }
       "function_declaration" => Ok(Some(self.lower_function_declaration(node)?)),
       "class_declaration" => Ok(Some(self.lower_class_declaration(node)?)),
+      "import_statement" => Ok(Some(self.lower_import_declaration(node)?)),
+      "export_statement" => Ok(Some(self.lower_export_declaration(node)?)),
 
       // Control flow
       "if_statement" => Ok(Some(self.lower_if_statement(node)?)),

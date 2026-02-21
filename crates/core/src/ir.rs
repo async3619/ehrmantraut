@@ -24,6 +24,10 @@ pub enum IrNode {
   FunctionDecl(FunctionDecl),
   ClassDecl(ClassDecl),
 
+  // Module
+  ImportDecl(ImportDecl),
+  ExportDecl(ExportDecl),
+
   // Control flow
   If(IfStmt),
   For(ForStmt),
@@ -108,6 +112,71 @@ pub struct ClassDecl {
   pub super_class: Option<IrExpr>,
   pub body: Vec<IrNode>,
   pub annotations: Annotations,
+}
+
+// ── Module nodes (import / export) ───────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ImportDecl {
+  pub span: Span,
+  pub specifiers: Vec<ImportSpecifier>,
+  pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ImportSpecifier {
+  Default(ImportDefault),
+  Named(ImportNamed),
+  Namespace(ImportNamespace),
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ImportDefault {
+  pub span: Span,
+  pub local: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ImportNamed {
+  pub span: Span,
+  pub imported: String,
+  pub local: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ImportNamespace {
+  pub span: Span,
+  pub local: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ExportDecl {
+  pub span: Span,
+  pub declaration: Option<Box<IrNode>>,
+  pub specifiers: Vec<ExportSpecifier>,
+  pub source: Option<String>,
+  pub is_default: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ExportSpecifier {
+  pub span: Span,
+  pub local: String,
+  pub exported: String,
 }
 
 // ── Control flow nodes ───────────────────────────────────────────────
