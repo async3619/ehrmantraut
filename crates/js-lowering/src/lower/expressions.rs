@@ -1,5 +1,8 @@
 use ehrmantraut_core::ir::{
-  Assignment, BinaryExpr, Call, Identifier, IrExpr, Literal, LiteralValue, MemberAccess, OpaqueExpr,
+  AccessorKind, AccessorProperty, ArrayExpr, Assignment, BinaryExpr, Block, Call, ConditionalExpr,
+  Identifier, IrExpr, KeyValueProperty, Literal, LiteralValue, MemberAccess, MethodProperty,
+  ObjectExpr, ObjectProperty, OpaqueExpr, Param, ShorthandProperty, SpreadProperty, UnaryExpr,
+  UpdateExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -254,5 +257,342 @@ impl JsLowerer {
       span: node.span,
       value: LiteralValue::Undefined,
     })
+  }
+
+  // ── Unary / Update ──────────────────────────────────────────────
+
+  pub fn lower_unary_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let operator = self.child_by_field(node, "operator");
+    let operand = self.child_by_field(node, "argument");
+
+    let op_str = operator.map(|o| self.node_text(o)).unwrap_or_default();
+
+    let operand_expr = match operand {
+      Some(a) => self.lower_expression(a)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_operand".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    Ok(IrExpr::UnaryExpr(UnaryExpr {
+      span: node.span,
+      operator: op_str,
+      operand: Box::new(operand_expr),
+      prefix: true,
+    }))
+  }
+
+  pub fn lower_update_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let operand = self.child_by_field(node, "argument");
+    let operator = self.child_by_field(node, "operator");
+
+    let op_str = operator.map(|o| self.node_text(o)).unwrap_or_default();
+
+    let operand_expr = match operand {
+      Some(a) => self.lower_expression(a)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_operand".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    // Determine prefix vs postfix by checking if operator comes before operand
+    let prefix = match (operator, operand) {
+      (Some(op), Some(arg)) => op.span.start.offset < arg.span.start.offset,
+      _ => true,
+    };
+
+    Ok(IrExpr::UpdateExpr(UpdateExpr {
+      span: node.span,
+      operator: op_str,
+      operand: Box::new(operand_expr),
+      prefix,
+    }))
+  }
+
+  // ── Conditional (ternary) ───────────────────────────────────────
+
+  pub fn lower_conditional_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let condition = self.child_by_field(node, "condition");
+    let consequent = self.child_by_field(node, "consequence");
+    let alternate = self.child_by_field(node, "alternative");
+
+    let cond_expr = match condition {
+      Some(c) => self.lower_expression(c)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_condition".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    let cons_expr = match consequent {
+      Some(c) => self.lower_expression(c)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_consequent".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    let alt_expr = match alternate {
+      Some(a) => self.lower_expression(a)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_alternate".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    Ok(IrExpr::ConditionalExpr(ConditionalExpr {
+      span: node.span,
+      condition: Box::new(cond_expr),
+      consequent: Box::new(cons_expr),
+      alternate: Box::new(alt_expr),
+    }))
+  }
+
+  // ── Array literal ───────────────────────────────────────────────
+
+  pub fn lower_array_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let mut elements: Vec<Option<IrExpr>> = Vec::new();
+    let mut prev_was_comma = false;
+    let mut first = true;
+
+    for child in &node.children {
+      match child.kind.as_str() {
+        "[" => {
+          first = true;
+          continue;
+        }
+        "]" => {
+          // Trailing comma before ] does NOT create a hole
+          break;
+        }
+        "," => {
+          if first || prev_was_comma {
+            // Hole: either leading comma or consecutive commas
+            elements.push(None);
+          }
+          prev_was_comma = true;
+          first = false;
+          continue;
+        }
+        _ => {
+          if !child.named {
+            continue;
+          }
+          let expr = self.lower_expression(child)?;
+          elements.push(Some(expr));
+          prev_was_comma = false;
+          first = false;
+        }
+      }
+    }
+
+    Ok(IrExpr::ArrayExpr(ArrayExpr {
+      span: node.span,
+      elements,
+    }))
+  }
+
+  // ── Object literal ──────────────────────────────────────────────
+
+  pub fn lower_object_expression(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let mut properties = Vec::new();
+
+    for child in &node.children {
+      if !child.named {
+        continue;
+      }
+      match child.kind.as_str() {
+        "pair" => {
+          properties.push(self.lower_pair_property(child)?);
+        }
+        "shorthand_property_identifier" | "shorthand_property_identifier_pattern" => {
+          properties.push(ObjectProperty::Shorthand(ShorthandProperty {
+            span: child.span,
+            name: self.node_text(child),
+          }));
+        }
+        "method_definition" => {
+          properties.push(self.lower_method_or_accessor_property(child)?);
+        }
+        "spread_element" => {
+          let argument = self
+            .first_named_child(child)
+            .map(|a| self.lower_expression(a))
+            .transpose()?
+            .unwrap_or(IrExpr::Opaque(OpaqueExpr {
+              span: child.span,
+              cst_kind: "missing_spread_argument".to_string(),
+              text: String::new(),
+            }));
+          properties.push(ObjectProperty::Spread(SpreadProperty {
+            span: child.span,
+            argument,
+          }));
+        }
+        _ => {
+          // Unknown property type — try as key-value fallback
+          properties.push(ObjectProperty::Shorthand(ShorthandProperty {
+            span: child.span,
+            name: self.node_text(child),
+          }));
+        }
+      }
+    }
+
+    Ok(IrExpr::ObjectExpr(ObjectExpr {
+      span: node.span,
+      properties,
+    }))
+  }
+
+  fn lower_pair_property(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<ObjectProperty, LowerError> {
+    let key_node = self.child_by_field(node, "key");
+    let value_node = self.child_by_field(node, "value");
+
+    let computed = key_node
+      .map(|k| k.kind == "computed_property_name")
+      .unwrap_or(false);
+
+    let key = match key_node {
+      Some(k) => {
+        if k.kind == "computed_property_name" {
+          match self.first_named_child(k) {
+            Some(inner) => self.lower_expression(inner)?,
+            None => self.lower_expression(k)?,
+          }
+        } else {
+          self.lower_expression(k)?
+        }
+      }
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_key".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    let value = match value_node {
+      Some(v) => self.lower_expression(v)?,
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_value".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    Ok(ObjectProperty::KeyValue(KeyValueProperty {
+      span: node.span,
+      key,
+      value,
+      computed,
+    }))
+  }
+
+  fn lower_method_or_accessor_property(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<ObjectProperty, LowerError> {
+    // Check for get/set accessor
+    let has_get = node.children.iter().any(|c| !c.named && c.kind == "get");
+    let has_set = node.children.iter().any(|c| !c.named && c.kind == "set");
+
+    let name_node = self.child_by_field(node, "name");
+    let computed = name_node
+      .map(|n| n.kind == "computed_property_name")
+      .unwrap_or(false);
+
+    let key = match name_node {
+      Some(n) => {
+        if n.kind == "computed_property_name" {
+          match self.first_named_child(n) {
+            Some(inner) => self.lower_expression(inner)?,
+            None => self.lower_expression(n)?,
+          }
+        } else {
+          self.lower_expression(n)?
+        }
+      }
+      None => IrExpr::Opaque(OpaqueExpr {
+        span: node.span,
+        cst_kind: "missing_name".to_string(),
+        text: String::new(),
+      }),
+    };
+
+    let params_node = self.child_by_field(node, "parameters");
+    let params = match params_node {
+      Some(p) => p
+        .children
+        .iter()
+        .filter(|c| c.named && !Self::is_ts_type_node(&c.kind))
+        .map(|c| Param {
+          span: c.span,
+          name: self.node_text(c),
+        })
+        .collect(),
+      None => Vec::new(),
+    };
+
+    let body_node = self.child_by_field(node, "body");
+    let body = match body_node {
+      Some(b) => self.lower_block(b)?,
+      None => Block {
+        span: node.span,
+        body: Vec::new(),
+      },
+    };
+
+    if has_get || has_set {
+      let accessor_kind = if has_get {
+        AccessorKind::Get
+      } else {
+        AccessorKind::Set
+      };
+      return Ok(ObjectProperty::Accessor(AccessorProperty {
+        span: node.span,
+        key,
+        accessor_kind,
+        params,
+        body,
+      }));
+    }
+
+    let is_async = node.children.iter().any(|c| !c.named && c.kind == "async");
+    let is_generator = node.children.iter().any(|c| !c.named && c.kind == "*");
+
+    Ok(ObjectProperty::Method(MethodProperty {
+      span: node.span,
+      key,
+      params,
+      body,
+      computed,
+      is_async,
+      is_generator,
+    }))
   }
 }

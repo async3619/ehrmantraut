@@ -246,3 +246,198 @@ test('lower JS class declaration with extends', (t) => {
   t.is(node.name, 'Bar')
   t.truthy(node.superClass)
 })
+
+// ── unary expressions ──────────────────────────────────────────────
+
+test('lower JS unary not expression', (t) => {
+  const node = lower('!x;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'unaryExpr') return t.fail()
+  t.is(node.expression.operator, '!')
+  t.is(node.expression.prefix, true)
+  if (node.expression.operand.type !== 'identifier') return t.fail()
+  t.is(node.expression.operand.name, 'x')
+})
+
+test('lower JS typeof expression', (t) => {
+  const node = lower('typeof x;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'unaryExpr') return t.fail()
+  t.is(node.expression.operator, 'typeof')
+  t.is(node.expression.prefix, true)
+})
+
+test('lower JS void expression', (t) => {
+  const node = lower('void 0;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'unaryExpr') return t.fail()
+  t.is(node.expression.operator, 'void')
+})
+
+test('lower JS delete expression', (t) => {
+  const node = lower('delete obj.key;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'unaryExpr') return t.fail()
+  t.is(node.expression.operator, 'delete')
+})
+
+test('lower JS unary minus expression', (t) => {
+  const node = lower('-x;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'unaryExpr') return t.fail()
+  t.is(node.expression.operator, '-')
+})
+
+// ── update expressions ─────────────────────────────────────────────
+
+test('lower JS prefix increment', (t) => {
+  const node = lower('++x;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'updateExpr') return t.fail()
+  t.is(node.expression.operator, '++')
+  t.is(node.expression.prefix, true)
+})
+
+test('lower JS postfix increment', (t) => {
+  const node = lower('x++;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'updateExpr') return t.fail()
+  t.is(node.expression.operator, '++')
+  t.is(node.expression.prefix, false)
+})
+
+test('lower JS prefix decrement', (t) => {
+  const node = lower('--x;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'updateExpr') return t.fail()
+  t.is(node.expression.operator, '--')
+  t.is(node.expression.prefix, true)
+})
+
+test('lower JS postfix decrement', (t) => {
+  const node = lower('x--;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'updateExpr') return t.fail()
+  t.is(node.expression.operator, '--')
+  t.is(node.expression.prefix, false)
+})
+
+// ── conditional (ternary) expression ───────────────────────────────
+
+test('lower JS ternary expression', (t) => {
+  const node = lower('a ? b : c;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'conditionalExpr') return t.fail()
+  if (node.expression.condition.type !== 'identifier') return t.fail()
+  t.is(node.expression.condition.name, 'a')
+  if (node.expression.consequent.type !== 'identifier') return t.fail()
+  t.is(node.expression.consequent.name, 'b')
+  if (node.expression.alternate.type !== 'identifier') return t.fail()
+  t.is(node.expression.alternate.name, 'c')
+})
+
+test('lower JS nested ternary expression', (t) => {
+  const node = lower('a ? b : c ? d : e;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'conditionalExpr') return t.fail()
+  t.is(node.expression.alternate.type, 'conditionalExpr')
+})
+
+// ── array expression ───────────────────────────────────────────────
+
+test('lower JS basic array expression', (t) => {
+  const node = lower('[1, 2, 3];', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'arrayExpr') return t.fail()
+  t.is(node.expression.elements.length, 3)
+  for (const elem of node.expression.elements) {
+    if (!elem) return t.fail()
+    t.is(elem.type, 'literal')
+  }
+})
+
+test('lower JS sparse array (holes)', (t) => {
+  const node = lower('[1, , 3];', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'arrayExpr') return t.fail()
+  t.is(node.expression.elements.length, 3)
+  t.truthy(node.expression.elements[0])
+  t.is(node.expression.elements[1], null)
+  t.truthy(node.expression.elements[2])
+})
+
+test('lower JS empty array', (t) => {
+  const node = lower('[];', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'arrayExpr') return t.fail()
+  t.is(node.expression.elements.length, 0)
+})
+
+test('lower JS array with nested expressions', (t) => {
+  const node = lower('[a + b, fn()];', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'arrayExpr') return t.fail()
+  t.is(node.expression.elements.length, 2)
+  const first = node.expression.elements[0]
+  const second = node.expression.elements[1]
+  if (!first || !second) return t.fail()
+  t.is(first.type, 'binaryExpr')
+  t.is(second.type, 'call')
+})
+
+// ── object expression ──────────────────────────────────────────────
+
+test('lower JS basic object expression', (t) => {
+  const node = lower('({a: 1, b: 2});', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'objectExpr') return t.fail()
+  t.is(node.expression.properties.length, 2)
+  t.is(node.expression.properties[0].kind, 'keyValue')
+  t.is(node.expression.properties[1].kind, 'keyValue')
+})
+
+test('lower JS object shorthand property', (t) => {
+  const node = lower('({x, y});', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'objectExpr') return t.fail()
+  t.is(node.expression.properties.length, 2)
+  t.is(node.expression.properties[0].kind, 'shorthand')
+  if (node.expression.properties[0].kind !== 'shorthand') return t.fail()
+  t.is(node.expression.properties[0].name, 'x')
+})
+
+test('lower JS object computed property', (t) => {
+  const node = lower('({["a"]: 1});', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'objectExpr') return t.fail()
+  if (node.expression.properties[0].kind !== 'keyValue') return t.fail()
+  t.is(node.expression.properties[0].computed, true)
+})
+
+test('lower JS object method shorthand', (t) => {
+  const node = lower('({foo() { return 1 }});', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'objectExpr') return t.fail()
+  t.is(node.expression.properties[0].kind, 'method')
+  if (node.expression.properties[0].kind !== 'method') return t.fail()
+  if (node.expression.properties[0].key.type !== 'identifier') return t.fail()
+  t.is(node.expression.properties[0].key.name, 'foo')
+})
+
+test('lower JS object getter and setter', (t) => {
+  const node = lower('({get x() { return 1 }, set x(v) { }});', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'objectExpr') return t.fail()
+  t.is(node.expression.properties.length, 2)
+  if (node.expression.properties[0].kind !== 'accessor') return t.fail()
+  t.is(node.expression.properties[0].accessorKind, 'get')
+  if (node.expression.properties[1].kind !== 'accessor') return t.fail()
+  t.is(node.expression.properties[1].accessorKind, 'set')
+})
+
+test('lower JS empty object', (t) => {
+  const node = lower('({});', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'objectExpr') return t.fail()
+  t.is(node.expression.properties.length, 0)
+})

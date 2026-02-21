@@ -56,6 +56,11 @@ pub enum IrExpr {
   BinaryExpr(BinaryExpr),
   Identifier(Identifier),
   Literal(Literal),
+  UnaryExpr(UnaryExpr),
+  UpdateExpr(UpdateExpr),
+  ConditionalExpr(ConditionalExpr),
+  ArrayExpr(ArrayExpr),
+  ObjectExpr(ObjectExpr),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
 }
@@ -333,6 +338,125 @@ pub enum DeclKind {
   Function,
   Class,
   Import,
+}
+
+// ── Unary / Update / Conditional ─────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct UnaryExpr {
+  pub span: Span,
+  pub operator: String,
+  pub operand: Box<IrExpr>,
+  pub prefix: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateExpr {
+  pub span: Span,
+  pub operator: String,
+  pub operand: Box<IrExpr>,
+  pub prefix: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ConditionalExpr {
+  pub span: Span,
+  pub condition: Box<IrExpr>,
+  pub consequent: Box<IrExpr>,
+  pub alternate: Box<IrExpr>,
+}
+
+// ── Array / Object literals ─────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ArrayExpr {
+  pub span: Span,
+  pub elements: Vec<Option<IrExpr>>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectExpr {
+  pub span: Span,
+  pub properties: Vec<ObjectProperty>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ObjectProperty {
+  KeyValue(KeyValueProperty),
+  Shorthand(ShorthandProperty),
+  Method(MethodProperty),
+  Accessor(AccessorProperty),
+  Spread(SpreadProperty),
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct KeyValueProperty {
+  pub span: Span,
+  pub key: IrExpr,
+  pub value: IrExpr,
+  pub computed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ShorthandProperty {
+  pub span: Span,
+  pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct MethodProperty {
+  pub span: Span,
+  pub key: IrExpr,
+  pub params: Vec<Param>,
+  pub body: Block,
+  pub computed: bool,
+  pub is_async: bool,
+  pub is_generator: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct AccessorProperty {
+  pub span: Span,
+  pub key: IrExpr,
+  pub accessor_kind: AccessorKind,
+  pub params: Vec<Param>,
+  pub body: Block,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub enum AccessorKind {
+  Get,
+  Set,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct SpreadProperty {
+  pub span: Span,
+  pub argument: IrExpr,
 }
 
 // ── Opaque (escape hatch) ────────────────────────────────────────────
