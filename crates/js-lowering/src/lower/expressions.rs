@@ -99,6 +99,7 @@ impl JsLowerer {
       span: node.span,
       callee: Box::new(callee),
       arguments,
+      optional: Self::has_optional_chain(node),
     }))
   }
 
@@ -132,6 +133,7 @@ impl JsLowerer {
       object: Box::new(obj_expr),
       property: Box::new(prop_expr),
       computed: false,
+      optional: Self::has_optional_chain(node),
     }))
   }
 
@@ -165,6 +167,7 @@ impl JsLowerer {
       object: Box::new(obj_expr),
       property: Box::new(idx_expr),
       computed: true,
+      optional: Self::has_optional_chain(node),
     }))
   }
 
@@ -764,5 +767,14 @@ impl JsLowerer {
       is_async,
       is_generator,
     }))
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────
+
+  fn has_optional_chain(node: &crate::cst::CstNode) -> bool {
+    node
+      .children
+      .iter()
+      .any(|c| c.kind == "optional_chain" || c.field_name.as_deref() == Some("optional_chain"))
   }
 }

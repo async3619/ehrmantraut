@@ -331,6 +331,7 @@ pub struct Call {
   pub span: Span,
   pub callee: Box<IrExpr>,
   pub arguments: Vec<IrExpr>,
+  pub optional: bool,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -341,6 +342,7 @@ pub struct MemberAccess {
   pub object: Box<IrExpr>,
   pub property: Box<IrExpr>,
   pub computed: bool,
+  pub optional: bool,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]

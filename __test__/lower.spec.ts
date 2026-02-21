@@ -710,6 +710,38 @@ test('lower JS new expression without args', (t) => {
   t.is(node.expression.arguments.length, 0)
 })
 
+// ── optional chaining ─────────────────────────────────────────────
+
+test('lower JS optional member access', (t) => {
+  const node = lower('obj?.prop;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'memberAccess') return t.fail()
+  t.is(node.expression.optional, true)
+  t.is(node.expression.computed, false)
+})
+
+test('lower JS optional computed access', (t) => {
+  const node = lower('obj?.[0];', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'memberAccess') return t.fail()
+  t.is(node.expression.optional, true)
+  t.is(node.expression.computed, true)
+})
+
+test('lower JS optional call', (t) => {
+  const node = lower('fn?.();', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'call') return t.fail()
+  t.is(node.expression.optional, true)
+})
+
+test('lower JS non-optional member has optional false', (t) => {
+  const node = lower('obj.prop;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  if (node.expression.type !== 'memberAccess') return t.fail()
+  t.is(node.expression.optional, false)
+})
+
 test('lower JS super expression', (t) => {
   const node = lower('class A extends B { constructor() { super(); } }', 'javascript').body[0]
   if (node.type !== 'classDecl') return t.fail()
