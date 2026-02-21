@@ -1,7 +1,8 @@
 use ehrmantraut_core::ir::{
-  Annotations, Block, ClassDecl, DeclKind, ExportDecl, ExportSpecifier, FunctionDecl, ImportDecl,
-  ImportDefault, ImportNamed, ImportNamespace, ImportSpecifier, IrNode, Param, ScopeLevel,
-  VariableDecl,
+  Annotations, ArrayPattern, AssignmentPattern, Block, ClassDecl, DeclKind, ExportDecl,
+  ExportSpecifier, FunctionDecl, ImportDecl, ImportDefault, ImportNamed, ImportNamespace,
+  ImportSpecifier, IrNode, ObjectPattern, ObjectPatternProperty, Param, Pattern, PatternKeyValue,
+  PatternRest, PatternShorthand, RestPattern, ScopeLevel, VariableDecl,
 };
 
 use super::{JsLowerer, LowerError};
@@ -28,10 +29,16 @@ impl JsLowerer {
 
     let mut nodes = Vec::new();
     for declarator in &declarators {
-      let name = self
-        .child_by_field(declarator, "name")
-        .map(|n| self.node_text(n))
-        .unwrap_or_default();
+      let name_node = self.child_by_field(declarator, "name");
+
+      let (name, pattern) = match name_node {
+        Some(n) if n.kind == "object_pattern" || n.kind == "array_pattern" => {
+          let pat = self.lower_pattern(n)?;
+          (String::new(), Some(pat))
+        }
+        Some(n) => (self.node_text(n), None),
+        None => (String::new(), None),
+      };
 
       let value = self
         .child_by_field(declarator, "value")
@@ -42,6 +49,7 @@ impl JsLowerer {
         span: declarator.span,
         name,
         value,
+        pattern,
         annotations: Annotations {
           scope_level: scope_level.clone(),
           declaration_kind: decl_kind.clone(),
@@ -55,6 +63,7 @@ impl JsLowerer {
         span: node.span,
         name: String::new(),
         value: None,
+        pattern: None,
         annotations: Annotations {
           scope_level,
           declaration_kind: decl_kind,
@@ -369,12 +378,230 @@ impl JsLowerer {
         .children
         .iter()
         .filter(|c| c.named)
-        .map(|c| Param {
-          span: c.span,
-          name: self.node_text(c),
-        })
+        .filter_map(|c| self.lower_param(c).ok())
         .collect(),
       None => Vec::new(),
     }
+  }
+
+  fn lower_param(&mut self, node: &crate::cst::CstNode) -> Result<Param, LowerError> {
+    match node.kind.as_str() {
+      "object_pattern" | "array_pattern" => {
+        let pat = self.lower_pattern(node)?;
+        Ok(Param {
+          span: node.span,
+          name: String::new(),
+          pattern: Some(pat),
+          default_value: None,
+        })
+      }
+      "assignment_pattern" => {
+        let left = self.child_by_field(node, "left");
+        let right = self.child_by_field(node, "right");
+
+        let (name, pattern) = match left {
+          Some(l) if l.kind == "object_pattern" || l.kind == "array_pattern" => {
+            let pat = self.lower_pattern(l)?;
+            (String::new(), Some(pat))
+          }
+          Some(l) => (self.node_text(l), None),
+          None => (String::new(), None),
+        };
+
+        let default_value = right.map(|r| self.lower_expression(r)).transpose()?;
+
+        Ok(Param {
+          span: node.span,
+          name,
+          pattern,
+          default_value,
+        })
+      }
+      "rest_pattern" => {
+        let inner = self.first_named_child(node);
+        let name = inner.map(|n| self.node_text(n)).unwrap_or_default();
+        Ok(Param {
+          span: node.span,
+          name: format!("...{}", name),
+          pattern: None,
+          default_value: None,
+        })
+      }
+      _ => Ok(Param {
+        span: node.span,
+        name: self.node_text(node),
+        pattern: None,
+        default_value: None,
+      }),
+    }
+  }
+
+  // ── Pattern lowering ──────────────────────────────────────────────
+
+  pub(crate) fn lower_pattern(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<Pattern, LowerError> {
+    match node.kind.as_str() {
+      "object_pattern" => self.lower_object_pattern(node),
+      "array_pattern" => self.lower_array_pattern(node),
+      "assignment_pattern" => {
+        let left = self.child_by_field(node, "left");
+        let right = self.child_by_field(node, "right");
+
+        let left_pat = match left {
+          Some(l) => self.lower_pattern(l)?,
+          None => Pattern::Object(ObjectPattern {
+            span: node.span,
+            properties: Vec::new(),
+          }),
+        };
+
+        let right_expr = match right {
+          Some(r) => self.lower_expression(r)?,
+          None => ehrmantraut_core::ir::IrExpr::Opaque(ehrmantraut_core::ir::OpaqueExpr {
+            span: node.span,
+            cst_kind: "missing_default".to_string(),
+            text: String::new(),
+          }),
+        };
+
+        Ok(Pattern::Assignment(AssignmentPattern {
+          span: node.span,
+          left: Box::new(left_pat),
+          right: right_expr,
+        }))
+      }
+      "rest_pattern" => {
+        let inner = self
+          .first_named_child(node)
+          .map(|n| self.lower_pattern(n))
+          .transpose()?
+          .unwrap_or(Pattern::Object(ObjectPattern {
+            span: node.span,
+            properties: Vec::new(),
+          }));
+
+        Ok(Pattern::Rest(RestPattern {
+          span: node.span,
+          argument: Box::new(inner),
+        }))
+      }
+      // Simple identifier treated as a shorthand pattern
+      _ => Ok(Pattern::Object(ObjectPattern {
+        span: node.span,
+        properties: vec![ObjectPatternProperty::Shorthand(PatternShorthand {
+          span: node.span,
+          name: self.node_text(node),
+          default_value: None,
+        })],
+      })),
+    }
+  }
+
+  fn lower_object_pattern(&mut self, node: &crate::cst::CstNode) -> Result<Pattern, LowerError> {
+    let mut properties = Vec::new();
+
+    for child in &node.children {
+      if !child.named {
+        continue;
+      }
+      match child.kind.as_str() {
+        "shorthand_property_identifier_pattern" => {
+          properties.push(ObjectPatternProperty::Shorthand(PatternShorthand {
+            span: child.span,
+            name: self.node_text(child),
+            default_value: None,
+          }));
+        }
+        "pair_pattern" => {
+          let key = self.child_by_field(child, "key");
+          let value = self.child_by_field(child, "value");
+
+          let key_name = key.map(|k| self.node_text(k)).unwrap_or_default();
+          let value_pat = match value {
+            Some(v) => self.lower_pattern(v)?,
+            None => Pattern::Object(ObjectPattern {
+              span: child.span,
+              properties: Vec::new(),
+            }),
+          };
+
+          properties.push(ObjectPatternProperty::KeyValue(PatternKeyValue {
+            span: child.span,
+            key: key_name,
+            value: value_pat,
+          }));
+        }
+        "rest_pattern" => {
+          let inner = self
+            .first_named_child(child)
+            .map(|n| self.node_text(n))
+            .unwrap_or_default();
+          properties.push(ObjectPatternProperty::Rest(PatternRest {
+            span: child.span,
+            name: inner,
+          }));
+        }
+        "assignment_pattern" | "object_assignment_pattern" => {
+          // shorthand with default: { x = 10 }
+          let left = self.child_by_field(child, "left");
+          let right = self.child_by_field(child, "right");
+
+          let name = left.map(|l| self.node_text(l)).unwrap_or_default();
+          let default_value = right.map(|r| self.lower_expression(r)).transpose()?;
+
+          properties.push(ObjectPatternProperty::Shorthand(PatternShorthand {
+            span: child.span,
+            name,
+            default_value,
+          }));
+        }
+        _ => {}
+      }
+    }
+
+    Ok(Pattern::Object(ObjectPattern {
+      span: node.span,
+      properties,
+    }))
+  }
+
+  fn lower_array_pattern(&mut self, node: &crate::cst::CstNode) -> Result<Pattern, LowerError> {
+    let mut elements: Vec<Option<Pattern>> = Vec::new();
+    let mut prev_was_comma = false;
+    let mut first = true;
+
+    for child in &node.children {
+      match child.kind.as_str() {
+        "[" => {
+          first = true;
+          continue;
+        }
+        "]" => break,
+        "," => {
+          if first || prev_was_comma {
+            elements.push(None);
+          }
+          prev_was_comma = true;
+          first = false;
+          continue;
+        }
+        _ => {
+          if !child.named {
+            continue;
+          }
+          let pat = self.lower_pattern(child)?;
+          elements.push(Some(pat));
+          prev_was_comma = false;
+          first = false;
+        }
+      }
+    }
+
+    Ok(Pattern::Array(ArrayPattern {
+      span: node.span,
+      elements,
+    }))
   }
 }

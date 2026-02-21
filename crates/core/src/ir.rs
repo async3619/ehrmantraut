@@ -67,6 +67,7 @@ pub enum IrExpr {
   ArrayExpr(ArrayExpr),
   ObjectExpr(ObjectExpr),
   FunctionExpr(FunctionDecl),
+  SpreadExpr(SpreadExpr),
   // Catch-all for expressions we don't lower in detail
   Opaque(OpaqueExpr),
 }
@@ -80,6 +81,7 @@ pub struct VariableDecl {
   pub span: Span,
   pub name: String,
   pub value: Option<IrExpr>,
+  pub pattern: Option<Pattern>,
   pub annotations: Annotations,
 }
 
@@ -101,6 +103,8 @@ pub struct FunctionDecl {
 pub struct Param {
   pub span: Span,
   pub name: String,
+  pub pattern: Option<Pattern>,
+  pub default_value: Option<IrExpr>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -537,6 +541,96 @@ pub enum AccessorKind {
 pub struct SpreadProperty {
   pub span: Span,
   pub argument: IrExpr,
+}
+
+// ── Destructuring patterns ───────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum Pattern {
+  Object(ObjectPattern),
+  Array(ArrayPattern),
+  Assignment(AssignmentPattern),
+  Rest(RestPattern),
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectPattern {
+  pub span: Span,
+  pub properties: Vec<ObjectPatternProperty>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ObjectPatternProperty {
+  KeyValue(PatternKeyValue),
+  Shorthand(PatternShorthand),
+  Rest(PatternRest),
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct PatternKeyValue {
+  pub span: Span,
+  pub key: String,
+  pub value: Pattern,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct PatternShorthand {
+  pub span: Span,
+  pub name: String,
+  pub default_value: Option<IrExpr>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct PatternRest {
+  pub span: Span,
+  pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct ArrayPattern {
+  pub span: Span,
+  pub elements: Vec<Option<Pattern>>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct AssignmentPattern {
+  pub span: Span,
+  pub left: Box<Pattern>,
+  pub right: IrExpr,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct RestPattern {
+  pub span: Span,
+  pub argument: Box<Pattern>,
+}
+
+// ── Spread expression ───────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../bindings/")]
+#[serde(rename_all = "camelCase")]
+pub struct SpreadExpr {
+  pub span: Span,
+  pub argument: Box<IrExpr>,
 }
 
 // ── Opaque (escape hatch) ────────────────────────────────────────────
