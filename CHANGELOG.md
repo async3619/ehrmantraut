@@ -1,3 +1,10 @@
+# [1.0.0-dev.3](https://github.com/async3619/ehrmantraut/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-02-22)
+
+
+### Features
+
+* **napi:** add multi-threaded parallel processing APIs ([#63](https://github.com/async3619/ehrmantraut/issues/63)) ([019dcb9](https://github.com/async3619/ehrmantraut/commit/019dcb9e3eb24d9c8711ace3164c752fd7cc2859))
+
 # [1.0.0-dev.2](https://github.com/async3619/ehrmantraut/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2026-02-22)
 
 
