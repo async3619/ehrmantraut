@@ -2,8 +2,8 @@ use ehrmantraut_core::ir::{
   AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, AwaitExpr, BinaryExpr, Block,
   Call, ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
   LiteralValue, MemberAccess, MethodProperty, NewExpr, ObjectExpr, ObjectProperty, OpaqueExpr,
-  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, TemplateLiteral, UnaryExpr,
-  UpdateExpr, YieldExpr,
+  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, TaggedTemplate, TemplateLiteral,
+  UnaryExpr, UpdateExpr, YieldExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -86,6 +86,20 @@ impl JsLowerer {
     };
 
     let args_node = self.child_by_field(node, "arguments");
+
+    // Tagged template: tree-sitter represents `tag`hello`` as a call_expression
+    // where the arguments field is a template_string instead of an arguments node.
+    if let Some(args) = args_node {
+      if args.kind == "template_string" {
+        let quasi = self.lower_template_string(args)?;
+        return Ok(IrExpr::TaggedTemplate(TaggedTemplate {
+          span: node.span,
+          tag: Box::new(callee),
+          quasi: Box::new(quasi),
+        }));
+      }
+    }
+
     let arguments = match args_node {
       Some(args) => args
         .children
