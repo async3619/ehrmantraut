@@ -1,6 +1,4 @@
-use ehrmantraut_core::ir::{
-  Annotations, Block, DeclKind, FunctionDecl, IrNode, Param, ScopeLevel,
-};
+use ehrmantraut_core::ir::{Annotations, Block, DeclKind, FunctionDecl, IrNode, Param, ScopeLevel};
 
 use crate::lower::{JsLowerer, LowerError};
 
