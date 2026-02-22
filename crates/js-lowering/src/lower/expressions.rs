@@ -731,10 +731,10 @@ impl JsLowerer {
           }));
         }
         _ => {
-          // Unknown property type — try as key-value fallback
-          properties.push(ObjectProperty::Shorthand(ShorthandProperty {
+          properties.push(ObjectProperty::Opaque(OpaqueExpr {
             span: child.span,
-            name: self.node_text(child),
+            cst_kind: child.kind.clone(),
+            text: self.node_text(child),
           }));
         }
       }
