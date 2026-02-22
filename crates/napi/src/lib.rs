@@ -66,8 +66,8 @@ fn wrap_result_json(res: napi::Result<serde_json::Value>) -> String {
       format!(r#"{{"success":true,"result":{inner}}}"#)
     }
     Err(e) => {
-      let escaped = e.to_string().replace('\\', "\\\\").replace('"', "\\\"");
-      format!(r#"{{"success":false,"error":"{escaped}"}}"#)
+      let error_str = serde_json::to_string(&e.to_string()).unwrap_or_default();
+      format!(r#"{{"success":false,"error":{error_str}}}"#)
     }
   }
 }
