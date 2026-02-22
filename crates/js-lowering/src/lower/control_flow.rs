@@ -102,8 +102,10 @@ impl JsLowerer {
     &mut self,
     node: &crate::cst::CstNode,
   ) -> Result<IrNode, LowerError> {
-    // Determine if this is for..in or for..of
-    let is_of = node.kind == "for_in_statement" && node.children.iter().any(|c| c.kind == "of");
+    // Determine if this is for..in or for..of.
+    // Current tree-sitter-javascript uses "for_in_statement" for both, with an "of" child for for..of.
+    // Also handle a potential future "for_of_statement" node kind for grammar evolution.
+    let is_of = node.kind == "for_of_statement" || node.children.iter().any(|c| c.kind == "of");
     let kind = if is_of { ForKind::Of } else { ForKind::In };
 
     let left = self

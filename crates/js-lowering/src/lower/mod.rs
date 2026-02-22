@@ -113,7 +113,7 @@ impl JsLowerer {
       // Control flow
       "if_statement" => Ok(Some(self.lower_if_statement(node)?)),
       "for_statement" => Ok(Some(self.lower_for_statement(node)?)),
-      "for_in_statement" => Ok(Some(self.lower_for_in_statement(node)?)),
+      "for_in_statement" | "for_of_statement" => Ok(Some(self.lower_for_in_statement(node)?)),
       "while_statement" => Ok(Some(self.lower_while_statement(node)?)),
       "do_statement" => Ok(Some(self.lower_do_while_statement(node)?)),
       "switch_statement" => Ok(Some(self.lower_switch_statement(node)?)),
