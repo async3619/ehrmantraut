@@ -41,3 +41,13 @@ pub fn parse(source: String, language: String) -> napi::Result<serde_json::Value
 pub fn lower(source: String, language: String) -> napi::Result<serde_json::Value> {
   lower_internal(&source, &language)
 }
+
+#[napi(ts_return_type = "Promise<CstNode>")]
+pub async fn parse_async(source: String, language: String) -> napi::Result<serde_json::Value> {
+  parse_internal(&source, &language)
+}
+
+#[napi(ts_return_type = "Promise<IrModule>")]
+pub async fn lower_async(source: String, language: String) -> napi::Result<serde_json::Value> {
+  lower_internal(&source, &language)
+}

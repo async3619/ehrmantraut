@@ -558,4 +558,6 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.lower = nativeBinding.lower
+module.exports.lowerAsync = nativeBinding.lowerAsync
 module.exports.parse = nativeBinding.parse
+module.exports.parseAsync = nativeBinding.parseAsync
