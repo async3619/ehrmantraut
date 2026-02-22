@@ -46,7 +46,7 @@ if (existsSync(napiDir)) {
         block = [line]
       } else if (inBlock) {
         block.push(line)
-        if (line === '}') {
+        if (line.trimEnd() === '}') {
           interfaceBlocks.push(...block)
           inBlock = false
           block = []
