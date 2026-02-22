@@ -1,5 +1,5 @@
 mod control_flow;
-mod declarations;
+mod decl;
 mod error;
 mod expr;
 mod helpers;
