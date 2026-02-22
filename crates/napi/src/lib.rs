@@ -59,27 +59,35 @@ pub struct SourceEntry {
   pub language: String,
 }
 
-fn wrap_result(res: napi::Result<serde_json::Value>) -> serde_json::Value {
+fn wrap_result_json(res: napi::Result<serde_json::Value>) -> String {
   match res {
-    Ok(val) => serde_json::json!({ "success": true, "result": val }),
-    Err(e) => serde_json::json!({ "success": false, "error": e.to_string() }),
+    Ok(val) => {
+      let inner = serde_json::to_string(&val).unwrap_or_default();
+      format!(r#"{{"success":true,"result":{inner}}}"#)
+    }
+    Err(e) => {
+      let escaped = e.to_string().replace('\\', "\\\\").replace('"', "\\\"");
+      format!(r#"{{"success":false,"error":"{escaped}"}}"#)
+    }
   }
 }
 
-#[napi(ts_return_type = "Promise<Array<BatchParseResult>>")]
-pub async fn parse_batch(entries: Vec<SourceEntry>) -> napi::Result<serde_json::Value> {
-  let results: Vec<serde_json::Value> = entries
+fn batch_to_json_strings(
+  entries: &[SourceEntry],
+  process: impl Fn(&str, &str) -> napi::Result<serde_json::Value> + Sync,
+) -> Vec<String> {
+  entries
     .par_iter()
-    .map(|entry| wrap_result(parse_internal(&entry.source, &entry.language)))
-    .collect();
-  Ok(serde_json::Value::Array(results))
+    .map(|entry| wrap_result_json(process(&entry.source, &entry.language)))
+    .collect()
 }
 
-#[napi(ts_return_type = "Promise<Array<BatchLowerResult>>")]
-pub async fn lower_batch(entries: Vec<SourceEntry>) -> napi::Result<serde_json::Value> {
-  let results: Vec<serde_json::Value> = entries
-    .par_iter()
-    .map(|entry| wrap_result(lower_internal(&entry.source, &entry.language)))
-    .collect();
-  Ok(serde_json::Value::Array(results))
+#[napi(js_name = "parseBatchRaw")]
+pub async fn parse_batch(entries: Vec<SourceEntry>) -> napi::Result<Vec<String>> {
+  Ok(batch_to_json_strings(&entries, parse_internal))
+}
+
+#[napi(js_name = "lowerBatchRaw")]
+pub async fn lower_batch(entries: Vec<SourceEntry>) -> napi::Result<Vec<String>> {
+  Ok(batch_to_json_strings(&entries, lower_internal))
 }

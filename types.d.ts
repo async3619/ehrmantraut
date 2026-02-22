@@ -38,6 +38,20 @@ export type CstNode = { kind: string, named: boolean, span: Span, text: string |
 
 export type DeclKind = "let" | "const" | "var" | "function" | "class" | "import";
 
+/**
+ * Represents an ES module export declaration.
+ *
+ * Valid field combinations (all other combinations are invalid/unsupported):
+ * - Declaration export (e.g., `export const x = 1`):
+ *   - `declaration` present, `is_default == false`, `specifiers` empty, `source == None`
+ * - Named export (e.g., `export { x } from 'mod'` or `export { x }`):
+ *   - `specifiers` non-empty, `declaration == None`, `is_default == false`
+ *   - `source` optional (`Some` for re-exports, `None` for local exports)
+ * - Default export (e.g., `export default function(){}` or `export default x`):
+ *   - `is_default == true`, `declaration` present, `specifiers` empty, `source == None`
+ * - Export-all re-export (e.g., `export * from 'mod'`):
+ *   - `specifiers` empty, `declaration == None`, `is_default == false`, `source` present
+ */
 export type ExportDecl = { span: Span, declaration: IrNode | null, specifiers: Array<ExportSpecifier>, source: string | null, isDefault: boolean, };
 
 export type ExportSpecifier = { span: Span, local: string, exported: string, };
@@ -96,7 +110,7 @@ export type ObjectPattern = { span: Span, properties: Array<ObjectPatternPropert
 
 export type ObjectPatternProperty = { "kind": "keyValue" } & PatternKeyValue | { "kind": "shorthand" } & PatternShorthand | { "kind": "rest" } & PatternRest;
 
-export type ObjectProperty = { "kind": "keyValue" } & KeyValueProperty | { "kind": "shorthand" } & ShorthandProperty | { "kind": "method" } & MethodProperty | { "kind": "accessor" } & AccessorProperty | { "kind": "spread" } & SpreadProperty;
+export type ObjectProperty = { "kind": "keyValue" } & KeyValueProperty | { "kind": "shorthand" } & ShorthandProperty | { "kind": "method" } & MethodProperty | { "kind": "accessor" } & AccessorProperty | { "kind": "spread" } & SpreadProperty | { "kind": "opaque" } & OpaqueExpr;
 
 export type OpaqueExpr = { span: Span, cstKind: string, text: string, };
 
@@ -104,7 +118,7 @@ export type OpaqueNode = { span: Span, cstKind: string, text: string, };
 
 export type Param = { span: Span, name: string, pattern: Pattern | null, defaultValue: IrExpr | null, };
 
-export type Pattern = { "kind": "object" } & ObjectPattern | { "kind": "array" } & ArrayPattern | { "kind": "assignment" } & AssignmentPattern | { "kind": "rest" } & RestPattern;
+export type Pattern = { "kind": "object" } & ObjectPattern | { "kind": "array" } & ArrayPattern | { "kind": "assignment" } & AssignmentPattern | { "kind": "rest" } & RestPattern | { "kind": "opaque" } & OpaqueExpr;
 
 export type PatternKeyValue = { span: Span, key: string, value: Pattern, };
 
@@ -148,6 +162,14 @@ export type SwitchStmt = { span: Span, discriminant: IrExpr, cases: Array<Switch
 
 export type TaggedTemplate = { span: Span, tag: IrExpr, quasi: IrExpr, };
 
+/**
+ * Represents a template literal, optionally with interpolation.
+ *
+ * Invariant: `quasis.len() == expressions.len() + 1`, even when
+ * `expressions` is empty.
+ * For example, `` `a${b}c` `` has quasis `["a", "c"]` and expressions `[b]`,
+ * while `` `foo` `` has quasis `["foo"]` and expressions `[]`.
+ */
 export type TemplateLiteral = { span: Span, quasis: Array<string>, expressions: Array<IrExpr>, };
 
 export type ThrowStmt = { span: Span, argument: IrExpr, };

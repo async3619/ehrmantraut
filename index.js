@@ -559,7 +559,13 @@ if (!nativeBinding) {
 module.exports = nativeBinding
 module.exports.lower = nativeBinding.lower
 module.exports.lowerAsync = nativeBinding.lowerAsync
-module.exports.lowerBatch = nativeBinding.lowerBatch
+module.exports.lowerBatch = async function lowerBatch(entries) {
+  const raw = await nativeBinding.lowerBatchRaw(entries)
+  return raw.map(JSON.parse)
+}
 module.exports.parse = nativeBinding.parse
 module.exports.parseAsync = nativeBinding.parseAsync
-module.exports.parseBatch = nativeBinding.parseBatch
+module.exports.parseBatch = async function parseBatch(entries) {
+  const raw = await nativeBinding.parseBatchRaw(entries)
+  return raw.map(JSON.parse)
+}
