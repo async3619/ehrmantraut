@@ -52,14 +52,14 @@ fn tree_to_cst(node: tree_sitter::Node, source: &str, field_name: Option<&str>) 
 
   let span = Span {
     start: Position {
-      line: start.row as u32,
-      column: start.column as u32,
-      offset: node.start_byte() as u32,
+      line: u32::try_from(start.row).unwrap_or(u32::MAX),
+      column: u32::try_from(start.column).unwrap_or(u32::MAX),
+      offset: u32::try_from(node.start_byte()).unwrap_or(u32::MAX),
     },
     end: Position {
-      line: end.row as u32,
-      column: end.column as u32,
-      offset: node.end_byte() as u32,
+      line: u32::try_from(end.row).unwrap_or(u32::MAX),
+      column: u32::try_from(end.column).unwrap_or(u32::MAX),
+      offset: u32::try_from(node.end_byte()).unwrap_or(u32::MAX),
     },
   };
 
@@ -76,7 +76,9 @@ fn tree_to_cst(node: tree_sitter::Node, source: &str, field_name: Option<&str>) 
     .collect();
 
   let text = if child_count == 0 {
-    Some(source[node.start_byte()..node.end_byte()].to_string())
+    source
+      .get(node.start_byte()..node.end_byte())
+      .map(|s| s.to_string())
   } else {
     None
   };
