@@ -74,11 +74,6 @@ impl JsLowerer {
           for var_node in &mut var_nodes {
             if let IrNode::VariableDecl(ref mut v) = var_node {
               v.annotations.is_export = true;
-              v.annotations.declaration_kind = v
-                .annotations
-                .declaration_kind
-                .clone()
-                .or(Some(DeclKind::Import));
             }
           }
           nodes.extend(var_nodes);
