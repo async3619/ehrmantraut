@@ -315,7 +315,9 @@ impl JsLowerer {
       }),
     };
 
-    // Determine prefix vs postfix by checking if operator comes before operand
+    // Determine prefix vs postfix by comparing span offsets of operator and operand.
+    // If either is missing (malformed CST), default to prefix as a reasonable fallback
+    // since the exact form cannot be determined and the operand is already lowered as OpaqueExpr.
     let prefix = match (operator, operand) {
       (Some(op), Some(arg)) => op.span.start.offset < arg.span.start.offset,
       _ => true,
