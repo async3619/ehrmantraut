@@ -226,15 +226,7 @@ impl JsLowerer {
 
   pub fn lower_string_literal(&self, node: &crate::cst::CstNode) -> IrExpr {
     let text = self.node_text(node);
-    // Strip surrounding quotes
-    let inner = if (text.starts_with('"') && text.ends_with('"'))
-      || (text.starts_with('\'') && text.ends_with('\''))
-      || (text.starts_with('`') && text.ends_with('`'))
-    {
-      text[1..text.len() - 1].to_string()
-    } else {
-      text
-    };
+    let inner = Self::strip_quotes(text);
     IrExpr::Literal(Literal {
       span: node.span,
       value: LiteralValue::String(inner),
