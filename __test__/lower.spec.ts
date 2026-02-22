@@ -842,7 +842,7 @@ test('lower JS tagged template without interpolation', (t) => {
   t.is(expr.type, 'taggedTemplate')
   if (expr.type !== 'taggedTemplate') return t.fail()
   t.is(expr.tag.type, 'identifier')
-  t.is(expr.quasi.type, 'literal')
+  t.is(expr.quasi.type, 'templateLiteral')
 })
 
 // ── labeled statements ──────────────────────────────────────────────
