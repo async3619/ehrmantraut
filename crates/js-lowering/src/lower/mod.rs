@@ -1,7 +1,7 @@
 mod control_flow;
 mod declarations;
 mod error;
-mod expressions;
+mod expr;
 mod helpers;
 
 use ehrmantraut_core::ir::{
