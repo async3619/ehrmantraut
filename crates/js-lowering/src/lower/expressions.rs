@@ -463,6 +463,12 @@ impl JsLowerer {
     // Push the trailing quasi
     quasis.push(current_quasi);
 
+    debug_assert_eq!(
+      quasis.len(),
+      expressions.len() + 1,
+      "TemplateLiteral invariant: quasis.len() must equal expressions.len() + 1"
+    );
+
     Ok(IrExpr::TemplateLiteral(TemplateLiteral {
       span: node.span,
       quasis,
@@ -496,6 +502,12 @@ impl JsLowerer {
       }
     }
     quasis.push(current_quasi);
+
+    debug_assert_eq!(
+      quasis.len(),
+      expressions.len() + 1,
+      "TemplateLiteral invariant: quasis.len() must equal expressions.len() + 1"
+    );
 
     Ok(IrExpr::TemplateLiteral(TemplateLiteral {
       span: node.span,

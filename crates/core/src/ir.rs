@@ -224,6 +224,18 @@ pub struct ImportNamespace {
   pub local: String,
 }
 
+/// Represents an ES module export declaration.
+///
+/// Valid field combinations (all other combinations are invalid/unsupported):
+/// - Declaration export (e.g., `export const x = 1`):
+///   - `declaration` present, `is_default == false`, `specifiers` empty, `source == None`
+/// - Named export (e.g., `export { x } from 'mod'` or `export { x }`):
+///   - `specifiers` non-empty, `declaration == None`, `is_default == false`
+///   - `source` optional (`Some` for re-exports, `None` for local exports)
+/// - Default export (e.g., `export default function(){}` or `export default x`):
+///   - `is_default == true`, `declaration` present, `specifiers` empty, `source == None`
+/// - Export-all re-export (e.g., `export * from 'mod'`):
+///   - `specifiers` empty, `declaration == None`, `is_default == false`, `source` present
 #[derive(Debug, Clone, Serialize, TS)]
 #[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
@@ -704,6 +716,12 @@ pub struct RestPattern {
 #[derive(Debug, Clone, Serialize, TS)]
 #[ts(export, export_to = "../../bindings/")]
 #[serde(rename_all = "camelCase")]
+/// Represents a template literal, optionally with interpolation.
+///
+/// Invariant: `quasis.len() == expressions.len() + 1`, even when
+/// `expressions` is empty.
+/// For example, `` `a${b}c` `` has quasis `["a", "c"]` and expressions `[b]`,
+/// while `` `foo` `` has quasis `["foo"]` and expressions `[]`.
 pub struct TemplateLiteral {
   pub span: Span,
   pub quasis: Vec<String>,
