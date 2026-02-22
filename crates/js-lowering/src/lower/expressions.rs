@@ -877,12 +877,4 @@ impl JsLowerer {
     }))
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────
-
-  fn has_optional_chain(node: &crate::cst::CstNode) -> bool {
-    node
-      .children
-      .iter()
-      .any(|c| c.kind == "optional_chain" || c.field_name.as_deref() == Some("optional_chain"))
-  }
 }
