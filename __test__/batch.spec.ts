@@ -45,8 +45,13 @@ test('parseBatch preserves entry order', async (t) => {
   }))
   const results = await parseBatch(entries)
   t.is(results.length, 20)
-  for (const r of results) {
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]
     t.true(r.success)
+    if (r.success) {
+      const json = JSON.stringify(r.result)
+      t.true(json.includes(`x${i}`), `result[${i}] should contain variable x${i}`)
+    }
   }
 })
 
