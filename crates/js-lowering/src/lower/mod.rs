@@ -276,6 +276,18 @@ impl JsLowerer {
       .join("")
   }
 
+  pub(crate) fn strip_quotes(text: String) -> String {
+    if text.len() >= 2
+      && ((text.starts_with('"') && text.ends_with('"'))
+        || (text.starts_with('\'') && text.ends_with('\''))
+        || (text.starts_with('`') && text.ends_with('`')))
+    {
+      text[1..text.len() - 1].to_string()
+    } else {
+      text
+    }
+  }
+
   pub(crate) fn decl_kind_and_scope(kind_str: &str) -> (Option<DeclKind>, Option<ScopeLevel>) {
     match kind_str {
       "let" => (Some(DeclKind::Let), Some(ScopeLevel::Block)),
