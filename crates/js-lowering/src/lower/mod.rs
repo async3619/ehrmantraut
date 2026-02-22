@@ -256,7 +256,7 @@ impl JsLowerer {
     if !self.source.is_empty() {
       let start = node.span.start.offset as usize;
       let end = node.span.end.offset as usize;
-      if end <= self.source.len() {
+      if start <= end && end <= self.source.len() {
         return self.source[start..end].to_string();
       }
     }
