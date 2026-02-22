@@ -610,13 +610,18 @@ impl JsLowerer {
         }))
       }
       // Simple identifier treated as a shorthand pattern
-      _ => Ok(Pattern::Object(ObjectPattern {
+      "identifier" => Ok(Pattern::Object(ObjectPattern {
         span: node.span,
         properties: vec![ObjectPatternProperty::Shorthand(PatternShorthand {
           span: node.span,
           name: self.node_text(node),
           default_value: None,
         })],
+      })),
+      _ => Ok(Pattern::Opaque(ehrmantraut_core::ir::OpaqueExpr {
+        span: node.span,
+        cst_kind: node.kind.clone(),
+        text: self.node_text(node),
       })),
     }
   }

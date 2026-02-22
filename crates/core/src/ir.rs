@@ -557,6 +557,7 @@ pub enum ObjectProperty {
   Method(MethodProperty),
   Accessor(AccessorProperty),
   Spread(SpreadProperty),
+  Opaque(OpaqueExpr),
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -627,6 +628,7 @@ pub enum Pattern {
   Array(ArrayPattern),
   Assignment(AssignmentPattern),
   Rest(RestPattern),
+  Opaque(OpaqueExpr),
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
