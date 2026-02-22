@@ -2,8 +2,8 @@ use ehrmantraut_core::ir::{
   AccessorKind, AccessorProperty, Annotations, ArrayExpr, Assignment, AwaitExpr, BinaryExpr, Block,
   Call, ConditionalExpr, FunctionDecl, Identifier, IrExpr, IrNode, KeyValueProperty, Literal,
   LiteralValue, MemberAccess, MethodProperty, NewExpr, ObjectExpr, ObjectProperty, OpaqueExpr,
-  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, TemplateLiteral, UnaryExpr,
-  UpdateExpr, YieldExpr,
+  Param, ReturnStmt, ShorthandProperty, SpreadExpr, SpreadProperty, TaggedTemplate,
+  TemplateLiteral, UnaryExpr, UpdateExpr, YieldExpr,
 };
 
 use super::{JsLowerer, LowerError};
@@ -86,6 +86,20 @@ impl JsLowerer {
     };
 
     let args_node = self.child_by_field(node, "arguments");
+
+    // Tagged template: tree-sitter represents `tag`hello`` as a call_expression
+    // where the arguments field is a template_string instead of an arguments node.
+    if let Some(args) = args_node {
+      if args.kind == "template_string" {
+        let quasi = self.lower_template_as_literal(args)?;
+        return Ok(IrExpr::TaggedTemplate(TaggedTemplate {
+          span: node.span,
+          tag: Box::new(callee),
+          quasi: Box::new(quasi),
+        }));
+      }
+    }
+
     let arguments = match args_node {
       Some(args) => args
         .children
@@ -226,15 +240,7 @@ impl JsLowerer {
 
   pub fn lower_string_literal(&self, node: &crate::cst::CstNode) -> IrExpr {
     let text = self.node_text(node);
-    // Strip surrounding quotes
-    let inner = if (text.starts_with('"') && text.ends_with('"'))
-      || (text.starts_with('\'') && text.ends_with('\''))
-      || (text.starts_with('`') && text.ends_with('`'))
-    {
-      text[1..text.len() - 1].to_string()
-    } else {
-      text
-    };
+    let inner = Self::strip_quotes(text);
     IrExpr::Literal(Literal {
       span: node.span,
       value: LiteralValue::String(inner),
@@ -309,7 +315,9 @@ impl JsLowerer {
       }),
     };
 
-    // Determine prefix vs postfix by checking if operator comes before operand
+    // Determine prefix vs postfix by comparing span offsets of operator and operand.
+    // If either is missing (malformed CST), default to prefix as a reasonable fallback
+    // since the exact form cannot be determined and the operand is already lowered as OpaqueExpr.
     let prefix = match (operator, operand) {
       (Some(op), Some(arg)) => op.span.start.offset < arg.span.start.offset,
       _ => true,
@@ -456,6 +464,52 @@ impl JsLowerer {
     }
     // Push the trailing quasi
     quasis.push(current_quasi);
+
+    debug_assert_eq!(
+      quasis.len(),
+      expressions.len() + 1,
+      "TemplateLiteral invariant: quasis.len() must equal expressions.len() + 1"
+    );
+
+    Ok(IrExpr::TemplateLiteral(TemplateLiteral {
+      span: node.span,
+      quasis,
+      expressions,
+    }))
+  }
+
+  /// Lower a template string always as `TemplateLiteral`, even without interpolation.
+  /// Used for tagged template quasi to preserve template-literal structure in the IR.
+  pub fn lower_template_as_literal(
+    &mut self,
+    node: &crate::cst::CstNode,
+  ) -> Result<IrExpr, LowerError> {
+    let mut quasis = Vec::new();
+    let mut expressions = Vec::new();
+    let mut current_quasi = String::new();
+
+    for child in &node.children {
+      match child.kind.as_str() {
+        "string_fragment" | "escape_sequence" => {
+          current_quasi.push_str(&self.node_text(child));
+        }
+        "template_substitution" => {
+          quasis.push(std::mem::take(&mut current_quasi));
+          if let Some(expr_node) = self.first_named_child(child) {
+            let expr = self.lower_expression(expr_node)?;
+            expressions.push(expr);
+          }
+        }
+        _ => {}
+      }
+    }
+    quasis.push(current_quasi);
+
+    debug_assert_eq!(
+      quasis.len(),
+      expressions.len() + 1,
+      "TemplateLiteral invariant: quasis.len() must equal expressions.len() + 1"
+    );
 
     Ok(IrExpr::TemplateLiteral(TemplateLiteral {
       span: node.span,
@@ -691,10 +745,10 @@ impl JsLowerer {
           }));
         }
         _ => {
-          // Unknown property type — try as key-value fallback
-          properties.push(ObjectProperty::Shorthand(ShorthandProperty {
+          properties.push(ObjectProperty::Opaque(OpaqueExpr {
             span: child.span,
-            name: self.node_text(child),
+            cst_kind: child.kind.clone(),
+            text: self.node_text(child),
           }));
         }
       }

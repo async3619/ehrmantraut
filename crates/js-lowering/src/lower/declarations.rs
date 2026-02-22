@@ -158,17 +158,7 @@ impl JsLowerer {
   ) -> Result<IrNode, LowerError> {
     let source = self
       .child_by_field(node, "source")
-      .map(|s| {
-        let text = self.node_text(s);
-        // Strip quotes
-        if (text.starts_with('"') && text.ends_with('"'))
-          || (text.starts_with('\'') && text.ends_with('\''))
-        {
-          text[1..text.len() - 1].to_string()
-        } else {
-          text
-        }
-      })
+      .map(|s| Self::strip_quotes(self.node_text(s)))
       .unwrap_or_default();
 
     let mut specifiers = Vec::new();
@@ -268,16 +258,9 @@ impl JsLowerer {
       .iter()
       .any(|c| !c.named && c.kind == "default");
 
-    let source = self.child_by_field(node, "source").map(|s| {
-      let text = self.node_text(s);
-      if (text.starts_with('"') && text.ends_with('"'))
-        || (text.starts_with('\'') && text.ends_with('\''))
-      {
-        text[1..text.len() - 1].to_string()
-      } else {
-        text
-      }
-    });
+    let source = self
+      .child_by_field(node, "source")
+      .map(|s| Self::strip_quotes(self.node_text(s)));
 
     // Check for declaration child (function, class)
     let decl_child = node.children.iter().find(|c| {
@@ -627,13 +610,18 @@ impl JsLowerer {
         }))
       }
       // Simple identifier treated as a shorthand pattern
-      _ => Ok(Pattern::Object(ObjectPattern {
+      "identifier" => Ok(Pattern::Object(ObjectPattern {
         span: node.span,
         properties: vec![ObjectPatternProperty::Shorthand(PatternShorthand {
           span: node.span,
           name: self.node_text(node),
           default_value: None,
         })],
+      })),
+      _ => Ok(Pattern::Opaque(ehrmantraut_core::ir::OpaqueExpr {
+        span: node.span,
+        cst_kind: node.kind.clone(),
+        text: self.node_text(node),
       })),
     }
   }

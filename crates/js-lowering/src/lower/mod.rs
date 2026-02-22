@@ -74,11 +74,6 @@ impl JsLowerer {
           for var_node in &mut var_nodes {
             if let IrNode::VariableDecl(ref mut v) = var_node {
               v.annotations.is_export = true;
-              v.annotations.declaration_kind = v
-                .annotations
-                .declaration_kind
-                .clone()
-                .or(Some(DeclKind::Import));
             }
           }
           nodes.extend(var_nodes);
@@ -118,7 +113,7 @@ impl JsLowerer {
       // Control flow
       "if_statement" => Ok(Some(self.lower_if_statement(node)?)),
       "for_statement" => Ok(Some(self.lower_for_statement(node)?)),
-      "for_in_statement" => Ok(Some(self.lower_for_in_statement(node)?)),
+      "for_in_statement" | "for_of_statement" => Ok(Some(self.lower_for_in_statement(node)?)),
       "while_statement" => Ok(Some(self.lower_while_statement(node)?)),
       "do_statement" => Ok(Some(self.lower_do_while_statement(node)?)),
       "switch_statement" => Ok(Some(self.lower_switch_statement(node)?)),
@@ -261,7 +256,7 @@ impl JsLowerer {
     if !self.source.is_empty() {
       let start = node.span.start.offset as usize;
       let end = node.span.end.offset as usize;
-      if end <= self.source.len() {
+      if start <= end && end <= self.source.len() {
         return self.source[start..end].to_string();
       }
     }
@@ -279,6 +274,18 @@ impl JsLowerer {
       .map(|c| self.collect_text(c))
       .collect::<Vec<_>>()
       .join("")
+  }
+
+  pub(crate) fn strip_quotes(text: String) -> String {
+    if text.len() >= 2
+      && ((text.starts_with('"') && text.ends_with('"'))
+        || (text.starts_with('\'') && text.ends_with('\''))
+        || (text.starts_with('`') && text.ends_with('`')))
+    {
+      text[1..text.len() - 1].to_string()
+    } else {
+      text
+    }
   }
 
   pub(crate) fn decl_kind_and_scope(kind_str: &str) -> (Option<DeclKind>, Option<ScopeLevel>) {

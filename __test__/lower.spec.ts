@@ -825,11 +825,24 @@ test('lower JS template literal with multiple expressions', (t) => {
   t.is(node.expression.quasis.length, 3)
 })
 
-test('lower JS tagged template as call', (t) => {
+test('lower JS tagged template with interpolation', (t) => {
   const node = lower('tag`hello ${x}`;', 'javascript').body[0]
   if (node.type !== 'expressionStatement') return t.fail()
-  // tree-sitter treats tagged templates as call expressions
-  t.is(node.expression.type, 'call')
+  const expr = node.expression
+  t.is(expr.type, 'taggedTemplate')
+  if (expr.type !== 'taggedTemplate') return t.fail()
+  t.is(expr.tag.type, 'identifier')
+  t.is(expr.quasi.type, 'templateLiteral')
+})
+
+test('lower JS tagged template without interpolation', (t) => {
+  const node = lower('tag`hello world`;', 'javascript').body[0]
+  if (node.type !== 'expressionStatement') return t.fail()
+  const expr = node.expression
+  t.is(expr.type, 'taggedTemplate')
+  if (expr.type !== 'taggedTemplate') return t.fail()
+  t.is(expr.tag.type, 'identifier')
+  t.is(expr.quasi.type, 'templateLiteral')
 })
 
 // ── labeled statements ──────────────────────────────────────────────
